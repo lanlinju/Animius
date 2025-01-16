@@ -133,9 +133,8 @@ object AgedmSource : AnimeSource {
 
     private suspend fun getAnimeEpisodes(elements: Elements): Map<Int, List<EpisodeBean>> {
         val channels = mutableMapOf<Int, List<EpisodeBean>>()
-
-        val episodes = mutableListOf<EpisodeBean>()
         elements.forEachIndexed { i, e ->
+            val episodes = mutableListOf<EpisodeBean>()
             e.select("li").forEach { el ->
                 val name = el.text()
                 val url = el.select("a").attr("href")

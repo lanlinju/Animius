@@ -23,6 +23,11 @@ android {
             useSupportLibrary = true
         }
 
+        val dandanplayAppId = System.getenv("DANDANPLAY_APP_ID") ?: ""
+        val dandanplayAppSecret = System.getenv("DANDANPLAY_APP_SECRET") ?: ""
+        buildConfigField("String", "DANDANPLAY_APP_ID", "\"$dandanplayAppId\"")
+        buildConfigField("String", "DANDANPLAY_APP_SECRET", "\"$dandanplayAppSecret\"")
+
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }

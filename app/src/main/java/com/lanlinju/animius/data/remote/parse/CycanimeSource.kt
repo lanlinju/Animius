@@ -14,7 +14,7 @@ import org.jsoup.select.Elements
 
 object CycanimeSource : AnimeSource {
     // Release page: https://www.cycity.pro/
-    override val DEFAULT_DOMAIN: String = "https://www.cyc-anime.net"
+    override val DEFAULT_DOMAIN: String = "https://www.cycani.org/"
     override var baseUrl: String = getDefaultDomain()
 
     private val webViewUtil: WebViewUtil by lazy { WebViewUtil() }
@@ -83,13 +83,13 @@ object CycanimeSource : AnimeSource {
          var episodeName = ""
          val episodes = getAnimeEpisodes(document, action = { episodeName = it })*/
         val videoUrl = getVideoUrl("$baseUrl/$episodeUrl")
-        return VideoBean(videoUrl, headers)
+        return VideoBean(videoUrl)
     }
 
     private suspend fun getVideoUrl(url: String): String {
         return webViewUtil.interceptRequest(
             url = url,
-            regex = ".*\\.(mp4|mkv|m3u8).*\\?verify=.*",
+            regex = "^(?!.*url=).*?(.mp4|.m3u8|obj).*\$",
         )
     }
 

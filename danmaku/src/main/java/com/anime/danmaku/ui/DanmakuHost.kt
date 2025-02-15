@@ -1,5 +1,6 @@
 package com.anime.danmaku.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -34,7 +35,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.datasource.LoremIpsum
 import androidx.compose.ui.unit.dp
@@ -49,6 +49,7 @@ import kotlin.random.Random
 import kotlin.random.nextInt
 import kotlin.time.Duration.Companion.milliseconds
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun DanmakuHost(
     state: DanmakuHostState,
@@ -143,7 +144,7 @@ private fun DanmakuDebug(state: DanmakuHostState) {
 
 @Composable
 @Preview(showBackground = true)
-@Preview(showBackground = true, device = Devices.TABLET)
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,dpi=240")
 internal fun DanmakuHostPreview() {
     var emitted by remember { mutableIntStateOf(0) }
     val config = remember {

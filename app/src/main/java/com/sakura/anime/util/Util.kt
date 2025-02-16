@@ -22,6 +22,7 @@ import com.sakura.download.utils.decrypt
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -160,6 +161,10 @@ fun createDefaultHttpClient(
             sslSocketFactory(createSSLSocketFactory(), TrustAllCerts())
             hostnameVerifier { _, _ -> true }
         }
+    }
+    install(HttpTimeout) {
+        socketTimeoutMillis = 30_000L
+        connectTimeoutMillis = 30_000L
     }
     clientConfig()
     install(ContentNegotiation) {

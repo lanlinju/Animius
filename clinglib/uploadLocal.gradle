@@ -1,0 +1,21 @@
+apply plugin: 'maven-publish'
+
+task sourceJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    archiveClassifier = "sources"
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                groupId "com.github.SheTieJun"
+                artifact sourceJar
+                from components.release
+                artifactId = "cling"
+                version = '0.0.1'
+            }
+        }
+    }
+}
+

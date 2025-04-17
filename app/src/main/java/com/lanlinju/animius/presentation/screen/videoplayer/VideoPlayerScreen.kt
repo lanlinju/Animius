@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.View
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColor
@@ -101,6 +102,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.cling.entity.ClingDevice
 import com.anime.danmaku.api.DanmakuEvent
 import com.anime.danmaku.api.DanmakuPresentation
 import com.anime.danmaku.api.DanmakuSession
@@ -718,6 +720,27 @@ private fun VideoSideSheet(
         )
     }
 
+    //投屏搜索
+    if (playerState.isDLNAUiVisible.value) {
+        val context = LocalContext.current
+        Toast.makeText(context, "开始搜索设备", Toast.LENGTH_SHORT).show()
+        //初始化DLNA服务
+        viewModel.initService(context)
+        DLNASizeSheet(
+            deviceList = viewModel.getDeviceList(),
+            onDeviceSelect = { device ->
+                //推送视频流
+                viewModel.pushVideoUrl(video, device).let {
+                    Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                }
+            },
+            onDismissRequest = {
+                playerState.hideDLNAUi()
+                //销毁进程
+//                viewModel.destroyDLNA(context,service)
+            }
+        )
+    }
     if (playerState.isEpisodeUiVisible.value) {
         var selectedEpisodeIndex by remember { mutableIntStateOf(video.currentEpisodeIndex) }
         EpisodeSideSheet(
@@ -734,6 +757,30 @@ private fun VideoSideSheet(
             },
             onDismissRequest = { playerState.hideEpisodeUi() }
         )
+    }
+}
+
+@Composable
+fun DLNASizeSheet(
+    deviceList: MutableList<ClingDevice>?,
+    onDeviceSelect: (ClingDevice?) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    SideSheet(onDismissRequest = onDismissRequest, widthRatio = 0.2f) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            deviceList?.forEach { device ->
+                AdaptiveTextButton(
+                    text = device.name,
+                    modifier = Modifier.size(MediumTextButtonSize),
+                    onClick = { onDeviceSelect(device) },
+                    color = Color.LightGray,
+                )
+            }
+        }
     }
 }
 

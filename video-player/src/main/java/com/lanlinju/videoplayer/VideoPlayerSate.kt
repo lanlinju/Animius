@@ -6,8 +6,11 @@ import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.view.OrientationEventListener
 import android.view.Window
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -15,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.getSystemService
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
@@ -93,6 +97,7 @@ class VideoPlayerStateImpl(
     override val isSpeedUiVisible = mutableStateOf(false)
     override val isResizeUiVisible = mutableStateOf(false)
     override val isEpisodeUiVisible = mutableStateOf(false)
+    override val isDLNAUiVisible = mutableStateOf(false)
 
     /**
      * 当拖动Slider或屏幕时，更新Slider进度条位置
@@ -267,6 +272,36 @@ class VideoPlayerStateImpl(
         isResizeUiVisible.value = false
     }
 
+    override fun showDLNAUi() {
+        hideControlUi()
+        if (isAvailable(context) && isWifiConnected(context)) {
+            isDLNAUiVisible.value = true
+        } else {
+            Toast.makeText(context, "请先连接wifi", Toast.LENGTH_SHORT).show()
+        }
+
+    }
+
+    fun getActiveNetworkInfo(context: Context): NetworkCapabilities? {
+        return context
+            .getSystemService<ConnectivityManager>()?.let {
+                it.getNetworkCapabilities(it.activeNetwork)
+            }
+    }
+
+    fun isWifiConnected(context: Context): Boolean {
+        val info = getActiveNetworkInfo(context)
+        return info != null && info.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+    }
+
+    fun isAvailable(context: Context): Boolean {
+        return getActiveNetworkInfo(context)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+    }
+
+    override fun hideDLNAUi() {
+        isDLNAUiVisible.value = false
+    }
+
     override fun showEpisodeUi() {
         hideControlUi()
         isEpisodeUiVisible.value = true
@@ -290,6 +325,7 @@ class VideoPlayerStateImpl(
             Player.STATE_ENDED -> isEnded.value = true
         }
     }
+
 
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -421,6 +457,7 @@ interface VideoPlayerState {
     val isSpeedUiVisible: State<Boolean>
     val isResizeUiVisible: State<Boolean>
     val isEpisodeUiVisible: State<Boolean>
+    val isDLNAUiVisible: State<Boolean>
     val control: VideoPlayerControl
 
     fun onChangeVolume(value: Float)
@@ -447,6 +484,9 @@ interface VideoPlayerState {
 
     fun showResizeUi()
     fun hideResizeUi()
+
+    fun showDLNAUi()
+    fun hideDLNAUi()
 
     fun showEpisodeUi()
     fun hideEpisodeUi()

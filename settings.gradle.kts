@@ -22,6 +22,10 @@ dependencyResolutionManagement {
         maven { setUrl("https://jitpack.io") }
         google()
         mavenCentral()
+        maven {
+            setUrl("http://4thline.org/m2")
+            isAllowInsecureProtocol = true
+        }
     }
 }
 
@@ -30,3 +34,4 @@ include(":app")
 include(":video-player")
 include(":download")
 include(":danmaku")
+include(":clinglib")

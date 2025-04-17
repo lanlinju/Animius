@@ -100,7 +100,6 @@ private fun getDebugInfo(context: Context): String {
             Device manufacturer: ${Build.MANUFACTURER}
             Device name: ${Build.DEVICE} (${Build.PRODUCT})
             Device model: ${Build.MODEL}
-            Anime source: ${SourceHolder.currentSourceMode.name}
             WebView: ${getWebViewVersion(context)}
         """.trimIndent()
 }

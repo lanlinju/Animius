@@ -15,18 +15,13 @@ android {
         applicationId = "com.lanlinju.animius"
         minSdk = 26
         targetSdk = 35
-        versionCode = 32
-        versionName = "1.3.1"
+        versionCode = 31
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        val dandanplayAppId = System.getenv("DANDANPLAY_APP_ID") ?: ""
-        val dandanplayAppSecret = System.getenv("DANDANPLAY_APP_SECRET") ?: ""
-        buildConfigField("String", "DANDANPLAY_APP_ID", "\"$dandanplayAppId\"")
-        buildConfigField("String", "DANDANPLAY_APP_SECRET", "\"$dandanplayAppSecret\"")
 
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
@@ -75,6 +70,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/beans.xml"
         }
     }
 }
@@ -83,6 +79,7 @@ dependencies {
     implementation(project(":video-player"))
     implementation(project(":download"))
     implementation(project(":danmaku"))
+    implementation(project(":clinglib"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

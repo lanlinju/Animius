@@ -111,6 +111,7 @@ import com.lanlinju.animius.domain.model.Download
 import com.lanlinju.animius.domain.model.DownloadDetail
 import com.lanlinju.animius.domain.model.Episode
 import com.lanlinju.animius.domain.model.Favourite
+import com.lanlinju.animius.domain.model.History
 import com.lanlinju.animius.presentation.component.LoadingIndicator
 import com.lanlinju.animius.presentation.component.MediaSmall
 import com.lanlinju.animius.presentation.component.MediaSmallRow
@@ -130,7 +131,6 @@ import com.lanlinju.animius.util.isAndroidTV
 import com.lanlinju.animius.util.isWideScreen
 import com.lanlinju.animius.util.log
 import com.lanlinju.animius.util.rememberPreference
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 import com.lanlinju.animius.R as Res
@@ -266,11 +266,27 @@ fun AnimeDetailScreen(
                                     end = dimensionResource(Res.dimen.large_padding)
                                 ),
                                 reverseList = reverseList,
-                                onEpisodeClick = { index, episode ->
-                                    handleEpisodeSelection(
-                                        index, episode, animeDetail,
-                                        viewModel, scope, reverseList, onNavigateToVideoPlay
-                                    )
+                                onEpisodeClick = { episodeIndex ->
+                                    // TODO: 优化
+                                    with(animeDetail) {
+                                        val history =
+                                            History(
+                                                title = title,
+                                                imgUrl = img,
+                                                detailUrl = viewModel.detailUrl,
+                                                episodes = listOf(episodes[episodeIndex]),
+                                                sourceMode = viewModel.mode
+                                            )
+                                        viewModel.addHistory(history)
+                                        scope.launch {
+                                            PlayerParameters.serialize(
+                                                title = title,
+                                                episodeIndex = episodeIndex,
+                                                episodes = if (reverseList) episodes.reversed() else episodes,
+                                                mode = viewModel.mode
+                                            ).let { onNavigateToVideoPlay(it) }
+                                        }
+                                    }
                                 }
                             )
 
@@ -328,11 +344,28 @@ fun AnimeDetailScreen(
                             reverseList = reverseList,
                             lastPosition = animeDetail.lastPosition,
                             onDismissRequest = { showBottomSheet = false },
-                            onEpisodeClick = { index, episode ->
-                                handleEpisodeSelection(
-                                    index, episode, animeDetail,
-                                    viewModel, scope, reverseList, onNavigateToVideoPlay
-                                )
+                            onEpisodeClick = { episodeIndex ->
+                                // TODO: 优化
+                                with(animeDetail) {
+                                    val history =
+                                        History(
+                                            title = title,
+                                            imgUrl = img,
+                                            detailUrl = viewModel.detailUrl,
+                                            episodes = listOf(episodes[episodeIndex]),
+                                            sourceMode = viewModel.mode
+                                        )
+                                    viewModel.addHistory(history)
+                                    scope.launch {
+                                        PlayerParameters.serialize(
+                                            title = title,
+                                            episodeIndex = episodeIndex,
+                                            episodes = if (reverseList) episodes.reversed() else episodes,
+                                            mode = viewModel.mode
+                                        ).let { onNavigateToVideoPlay(it) }
+                                    }
+
+                                }
                             }
                         )
                     }
@@ -598,7 +631,7 @@ fun AnimeEpisodes(
     reverseList: Boolean,
     contentPadding: PaddingValues,
     color: Color = MaterialTheme.colorScheme.secondaryContainer,
-    onEpisodeClick: (index: Int, episode: Episode) -> Unit
+    onEpisodeClick: (episodeIndex: Int) -> Unit
 ) {
     val scrollState = rememberLazyListState(
         initialFirstVisibleItemIndex = if (lastPosition < 3) 0 else lastPosition,
@@ -618,7 +651,7 @@ fun AnimeEpisodes(
             val interactionSource = remember { MutableInteractionSource() }
 //            var focusIndex by rememberSaveable { mutableStateOf(lastPosition) } // 保存焦点位置
             FilledTonalButton(
-                onClick = { onEpisodeClick(index, episode) },
+                onClick = { onEpisodeClick(index) },
                 colors = ButtonDefaults.filledTonalButtonColors(containerColor = color.copy(0.5f)),
                 modifier = Modifier.run {
                     if (isAndroidTV) {
@@ -650,34 +683,6 @@ fun AnimeEpisodes(
         }
     }
 }
-
-private fun handleEpisodeSelection(
-    index: Int,
-    episode: Episode,
-    animeDetail: AnimeDetail,
-    viewModel: AnimeDetailViewModel,
-    scope: CoroutineScope,
-    reverseList: Boolean,
-    onNavigateToVideoPlay: (String) -> Unit
-) {
-    with(animeDetail) {
-        // 创建并立即添加历史记录
-        viewModel.addHistory(animeDetail, episode)
-
-        scope.launch {
-            PlayerParameters.serialize(
-                title = title,
-                episodeIndex = index,
-                episodes = episodes.conditionalReverse(reverseList),
-                mode = viewModel.mode
-            ).let(onNavigateToVideoPlay)
-        }
-    }
-}
-
-// 扩展函数：根据条件反转列表
-private fun List<Episode>.conditionalReverse(reverse: Boolean) =
-    if (reverse) reversed() else this
 
 @Composable
 private fun EpisodeListControl(
@@ -774,7 +779,7 @@ private fun EpisodeBottomSheet(
     reverseList: Boolean,
     lastPosition: Int,
     onDismissRequest: () -> Unit,
-    onEpisodeClick: (index: Int, episode: Episode) -> Unit,
+    onEpisodeClick: (episodeIndex: Int) -> Unit,
     isDownload: Boolean = false,
     onDownloadClick: (index: Int, episode: Episode) -> Unit = { _, _ -> },
 ) {
@@ -802,7 +807,7 @@ private fun EpisodeBottomSheet(
                     onClick = {
                         when {
                             isDownload -> onDownloadClick(index, episode)
-                            else -> onEpisodeClick(index, episode)
+                            else -> onEpisodeClick(index)
                         }
                     },
                     label = {
@@ -842,7 +847,7 @@ private fun DownloadBottomSheet(
         isDownload = true,
         onDownloadClick = onDownloadClick,
         onDismissRequest = onDismissRequest,
-        onEpisodeClick = { _, _ -> }
+        onEpisodeClick = { }
     )
 }
 

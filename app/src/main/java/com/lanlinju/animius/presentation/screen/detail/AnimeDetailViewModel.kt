@@ -47,8 +47,8 @@ class AnimeDetailViewModel @Inject constructor(
     val isFavourite: StateFlow<Boolean>
         get() = _isFavourite
 
-    var detailUrl: String
-    var mode: SourceMode
+    lateinit var detailUrl: String
+    lateinit var mode: SourceMode
 
     init {
         savedStateHandle.toRoute<Screen.AnimeDetail>().let {
@@ -74,14 +74,7 @@ class AnimeDetailViewModel @Inject constructor(
         }
     }
 
-    fun addHistory(animeDetail: AnimeDetail, episode: Episode) {
-        val history = History(
-            title = animeDetail.title,
-            imgUrl = animeDetail.img,
-            detailUrl = detailUrl,
-            episodes = listOf(episode),
-            sourceMode = mode
-        )
+    fun addHistory(history: History) {
         viewModelScope.launch {
             roomRepository.addHistory(history)
         }

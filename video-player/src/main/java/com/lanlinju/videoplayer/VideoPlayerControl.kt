@@ -200,7 +200,8 @@ private fun BottomControlBar(
                 resizeText = state.resizeText.value,
                 onSpeedClick = state::showSpeedUi,
                 onResizeClick = state::showResizeUi,
-                onEpisodeClick = state::showEpisodeUi
+                onEpisodeClick = state::showEpisodeUi,
+                onDLNAClick = state::showDLNAUi,
             )
         } else Spacer(modifier = Modifier.size(MediumIconButtonSize))
     }
@@ -240,6 +241,7 @@ private fun PlaybackControl(
     onDanmakuClick: (Boolean) -> Unit,
     speedText: String,
     resizeText: String,
+    onDLNAClick: () -> Unit,
     onSpeedClick: () -> Unit,
     onResizeClick: () -> Unit,
     onEpisodeClick: () -> Unit
@@ -259,9 +261,12 @@ private fun PlaybackControl(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            //Todo 添加投屏按钮
+            AdaptiveTextButton(text = "投屏", onClick = onDLNAClick)
             AdaptiveTextButton(text = "选集", onClick = onEpisodeClick)
             AdaptiveTextButton(text = speedText, onClick = onSpeedClick)
             AdaptiveTextButton(text = resizeText, onClick = onResizeClick)
+
         }
     }
 }

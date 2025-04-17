@@ -6,17 +6,17 @@ junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.10.0"
-composeBom = "2025.02.00"
+activityCompose = "1.9.3"
+composeBom = "2024.11.00"
 
 ksp = "2.1.0-1.0.29"
 hilt = "2.51.1"
-material = "1.13.0-alpha10"
-materialIconsExtended = "1.7.8"
-media3Exoplayer = "1.5.1"
-navigationCompose = "2.8.7"
+material = "1.13.0-alpha08"
+materialIconsExtended = "1.7.5"
+media3Exoplayer = "1.5.0"
+navigationCompose = "2.8.4"
 okhttp = "4.12.0"
-pagingVersion = "3.3.6"
+pagingVersion = "3.3.4"
 paletteKtx = "1.0.0"
 retrofit = "2.11.0"
 roomVersion = "2.6.1"
@@ -28,6 +28,7 @@ hiltNavigation = "1.2.0"
 splashscreen = "1.0.1"
 jsoup = "1.18.1"
 workRuntimeKtx = "2.10.0"
+lifecycleLivedataCoreKtx = "2.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -101,6 +102,7 @@ retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit
 # player
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3Exoplayer" }
 androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "media3Exoplayer" }
+androidx-lifecycle-livedata-core-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-core-ktx", version.ref = "lifecycleLivedataCoreKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

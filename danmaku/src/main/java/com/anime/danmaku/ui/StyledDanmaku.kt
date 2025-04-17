@@ -86,6 +86,13 @@ data class StyledDanmaku(
 }
 
 /*
+/**
+ *
+ * Source: https://github.com/open-ani/ani/blob/92690b0505f6596da0ebe1bbad01dd865020fc6f/danmaku/ui/commonMain/StyledDanmaku.kt#L80
+ * 绘制缓存好的`ImageBitmap` `drawImage` cpu使用率相比 直接绘制`drawText` cpu使用率
+ * 降低`4% - %6`左右
+ * 测试用的CPU: `snapdragon870`, 非release模式下
+ */
 internal fun DrawScope.drawDanmakuText(
     state: StyledDanmaku,
     screenPosX: () -> Float,

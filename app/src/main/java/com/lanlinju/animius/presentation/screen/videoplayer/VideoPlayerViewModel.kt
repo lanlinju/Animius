@@ -1,10 +1,17 @@
 package com.lanlinju.animius.presentation.screen.videoplayer
 
+import android.content.Context
+import android.content.ServiceConnection
 import androidx.core.content.edit
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.android.cling.ClingDLNAManager
+import com.android.cling.control.OnDeviceControlListener
+import com.android.cling.control.ServiceActionCallback
+import com.android.cling.entity.ClingDevice
+import com.android.cling.entity.ClingPlayType
 import com.anime.danmaku.api.DanmakuSession
 import com.lanlinju.animius.application.AnimeApplication
 import com.lanlinju.animius.domain.model.Episode
@@ -23,6 +30,7 @@ import com.lanlinju.animius.util.onError
 import com.lanlinju.animius.util.onSuccess
 import com.lanlinju.animius.util.preferences
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -287,5 +295,50 @@ class VideoPlayerViewModel @Inject constructor(
     fun retry() {
         _videoState.value = Resource.Loading
         getVideoFromRemote(currentEpisodeUrl, currentEpisodeIndex)
+    }
+
+    fun pushVideoUrl(video: Video, device: ClingDevice?): String {
+        var msg = ""
+        if (device != null) {
+            val control = ClingDLNAManager.getInstant()
+                .connectDevice(device, object : OnDeviceControlListener {
+                    override fun onDisconnected(device: org.fourthline.cling.model.meta.Device<*, *, *>) {
+                        super.onDisconnected(device)
+                        msg = "无法连接: ${device.details.friendlyName}"
+                    }
+                })
+            control.setAVTransportURI(
+                video.url,
+                video.title,
+                ClingPlayType.TYPE_VIDEO,
+                object : ServiceActionCallback<Unit> {
+                    override fun onSuccess(result: Unit) {
+                        msg = "投屏成功"
+                        control.play()
+                    }
+
+                    override fun onFailure(mss: String) {
+                        msg = "投屏失败"
+                    }
+                })
+        }
+        return msg
+    }
+
+    fun getDeviceList(): MutableList<ClingDevice>? {
+        ClingDLNAManager.getInstant().searchDevices()
+        return ClingDLNAManager.getInstant().getSearchDevices().value
+    }
+
+    fun initService(@ApplicationContext context: Context): Boolean {
+        if (!ClingDLNAManager.getInstant().isInit) {
+            ClingDLNAManager.getInstant().startBindUpnpService(context)
+        }
+        return true
+    }
+
+    fun destroyDLNA(@ApplicationContext context: Context, mServiceConnection: ServiceConnection?) {
+        ClingDLNAManager.getInstant().stopBindService(context, mServiceConnection)
+        ClingDLNAManager.getInstant().destroy()
     }
 }

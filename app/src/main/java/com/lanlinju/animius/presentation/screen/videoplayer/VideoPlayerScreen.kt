@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -725,7 +726,6 @@ private fun VideoSideSheet(
     //投屏搜索
     if (playerState.isDLNAUiVisible.value) {
         val context = LocalContext.current
-        Toast.makeText(context, "开始搜索设备", Toast.LENGTH_SHORT).show()
         //初始化DLNA服务
         viewModel.initService(context)
         DLNASizeSheet(
@@ -740,7 +740,7 @@ private fun VideoSideSheet(
 //                viewModel.destroyDLNA(context,service)
             },
             onRefreshList = {
-                Toast.makeText(context, "正在刷新列表", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "正在搜索设备", Toast.LENGTH_SHORT).show()
                 viewModel.searchDeviceList()
             }
         )
@@ -776,8 +776,9 @@ fun DLNASizeSheet(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = Color.Black.copy(alpha = 0.8f))
-                .padding(8.dp),
+                .padding(16.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Top,
         ) {
             // 刷新列表按钮放在左上角
             OutlinedButton(
@@ -792,7 +793,7 @@ fun DLNASizeSheet(
                 ),
                 modifier = Modifier
                     .align(Alignment.Start) // 按钮左对齐
-                    .padding(top = 8.dp)    // 添加顶部间距
+                    .padding(bottom = 16.dp)    // 添加顶部间距
                     .focusable()
             ) {
                 Text(
@@ -802,19 +803,22 @@ fun DLNASizeSheet(
                     maxLines = 1
                 )
             }
-        }
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            deviceList?.forEach { device ->
-                AdaptiveTextButton(
-                    text = device.name,
-                    modifier = Modifier.size(MediumTextButtonSize),
-                    onClick = { onDeviceSelect(device) },
-                    color = Color.LightGray,
-                )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                deviceList?.forEach { device ->
+                    item {
+                        AdaptiveTextButton(
+                            text = device.name,
+                            modifier = Modifier
+                                .fillMaxWidth() // 占据整个宽度
+                                .padding(vertical = 4.dp), // 添加上下间距
+                            onClick = { onDeviceSelect(device) },
+                            color = Color.LightGray
+                        )
+                    }
+                }
             }
         }
     }

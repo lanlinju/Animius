@@ -64,6 +64,9 @@ class VideoPlayerViewModel @Inject constructor(
     private val _deviceList = MutableStateFlow<MutableList<ClingDevice>?>(null)
     val deviceList = _deviceList.asStateFlow()
 
+//    var deviceList = MutableLiveData<MutableList<ClingDevice>>(null)
+
+
     // 判断是否为本地视频
     private var isLocalVideo = false
     private var mode: SourceMode? = null
@@ -338,6 +341,8 @@ class VideoPlayerViewModel @Inject constructor(
 
     fun searchDeviceList() {
         ClingDLNAManager.getInstant().searchDevices()
+        //监听到列表的变化
+        _deviceList.value = ClingDLNAManager.getInstant().getSearchDevices().value
     }
 
     fun initService(@ApplicationContext context: Context) {

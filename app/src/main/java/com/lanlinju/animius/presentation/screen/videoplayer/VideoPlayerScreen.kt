@@ -102,6 +102,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.cling.entity.ClingDevice
 import com.anime.danmaku.api.DanmakuEvent
@@ -697,7 +699,8 @@ private fun VideoSideSheet(
     video: Video,
     playerState: VideoPlayerState,
     viewModel: VideoPlayerViewModel,
-    deviceList: MutableList<ClingDevice>?
+    deviceList: MutableList<ClingDevice>?,
+    lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
 ) {
     var selectedSpeedIndex by remember { mutableIntStateOf(3) }     // 1.0x
     var selectedResizeIndex by remember { mutableIntStateOf(0) }    // 适应
@@ -732,7 +735,10 @@ private fun VideoSideSheet(
             deviceList = deviceList,
             onDeviceSelect = { device ->
                 //推送视频流
-                viewModel.pushVideoUrl(video, device, context)
+                viewModel.pushVideoUrl(video, device, context).let {
+                    playerState.hideDLNAUi()
+                }
+                //TODO 控制流
             },
             onDismissRequest = {
                 playerState.hideDLNAUi()
@@ -741,7 +747,7 @@ private fun VideoSideSheet(
             },
             onRefreshList = {
                 Toast.makeText(context, "正在搜索设备", Toast.LENGTH_SHORT).show()
-                viewModel.searchDeviceList()
+                viewModel.searchDeviceList(lifecycleOwner)
             }
         )
     }

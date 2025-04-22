@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.widget.Toast
 import androidx.core.content.edit
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -334,15 +335,13 @@ class VideoPlayerViewModel @Inject constructor(
         }
     }
 
-    fun getDeviceList(): MutableList<ClingDevice>? {
-//        ClingDLNAManager.getInstant().searchDevices()
-        return ClingDLNAManager.getInstant().getSearchDevices().value
-    }
 
-    fun searchDeviceList() {
+    fun searchDeviceList(lifecycleOwner: LifecycleOwner) {
         ClingDLNAManager.getInstant().searchDevices()
-        //监听到列表的变化
-        _deviceList.value = ClingDLNAManager.getInstant().getSearchDevices().value
+        //MutableStateFlow 监听value的变化  value内部变化无法重组
+        ClingDLNAManager.getInstant().getSearchDevices().observe(lifecycleOwner) { device ->
+            _deviceList.value = device?.toMutableList() ?: mutableListOf()  // 替换整个列表
+        }
     }
 
     fun initService(@ApplicationContext context: Context) {

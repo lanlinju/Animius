@@ -174,6 +174,7 @@ fun VideoPlayScreen(
             val playerState = rememberVideoPlayerState(isAutoOrientation = isAutoOrientation)
             val enabledDanmaku by viewModel.enabledDanmaku.collectAsStateWithLifecycle()
             val danmakuSession by viewModel.danmakuSession.collectAsStateWithLifecycle()
+            val deviceList by viewModel.deviceList.collectAsStateWithLifecycle()
 
             Box(
                 modifier = Modifier
@@ -212,7 +213,7 @@ fun VideoPlayScreen(
                 DanmakuHost(playerState, danmakuSession, enabledDanmaku)
                 VideoStateMessage(playerState)
                 VolumeBrightnessIndicator(playerState)
-                VideoSideSheet(video, playerState, viewModel)
+                VideoSideSheet(video, playerState, viewModel, deviceList)
 
                 // Save video position on dispose
                 DisposableEffect(Unit) {
@@ -694,7 +695,8 @@ private fun ShowVideoMessage(text: String, onRetryClick: (() -> Unit)? = null) {
 private fun VideoSideSheet(
     video: Video,
     playerState: VideoPlayerState,
-    viewModel: VideoPlayerViewModel
+    viewModel: VideoPlayerViewModel,
+    deviceList: MutableList<ClingDevice>?
 ) {
     var selectedSpeedIndex by remember { mutableIntStateOf(3) }     // 1.0x
     var selectedResizeIndex by remember { mutableIntStateOf(0) }    // 适应
@@ -727,17 +729,19 @@ private fun VideoSideSheet(
         //初始化DLNA服务
         viewModel.initService(context)
         DLNASizeSheet(
-            deviceList = viewModel.getDeviceList(),
+            deviceList = deviceList,
             onDeviceSelect = { device ->
                 //推送视频流
-                viewModel.pushVideoUrl(video, device).let {
-                    Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-                }
+                viewModel.pushVideoUrl(video, device, context)
             },
             onDismissRequest = {
                 playerState.hideDLNAUi()
                 //销毁进程
 //                viewModel.destroyDLNA(context,service)
+            },
+            onRefreshList = {
+                Toast.makeText(context, "正在刷新列表", Toast.LENGTH_SHORT).show()
+                viewModel.searchDeviceList()
             }
         )
     }
@@ -764,9 +768,41 @@ private fun VideoSideSheet(
 fun DLNASizeSheet(
     deviceList: MutableList<ClingDevice>?,
     onDeviceSelect: (ClingDevice?) -> Unit,
+    onRefreshList: () -> Unit,
     onDismissRequest: () -> Unit
 ) {
+
     SideSheet(onDismissRequest = onDismissRequest, widthRatio = 0.2f) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = Color.Black.copy(alpha = 0.8f))
+                .padding(8.dp),
+        ) {
+            // 刷新列表按钮放在左上角
+            OutlinedButton(
+                onClick = { onRefreshList() },
+                contentPadding = PaddingValues(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    Color.Unspecified
+                ),
+                border = BorderStroke(
+                    ButtonDefaults.outlinedButtonBorder().width,
+                    ButtonDefaults.outlinedButtonBorder().brush
+                ),
+                modifier = Modifier
+                    .align(Alignment.Start) // 按钮左对齐
+                    .padding(top = 8.dp)    // 添加顶部间距
+                    .focusable()
+            ) {
+                Text(
+                    text = "刷新列表",
+                    color = Color.LightGray,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1
+                )
+            }
+        }
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,

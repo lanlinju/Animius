@@ -10,7 +10,6 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.view.OrientationEventListener
 import android.view.Window
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -274,11 +273,11 @@ class VideoPlayerStateImpl(
 
     override fun showDLNAUi() {
         hideControlUi()
-        if (isAvailable(context) && isWifiConnected(context)) {
+//        if (isAvailable(context) && isWifiConnected(context)) {
             isDLNAUiVisible.value = true
-        } else {
-            Toast.makeText(context, "请先连接wifi", Toast.LENGTH_SHORT).show()
-        }
+//        } else {
+//            Toast.makeText(context, "请先连接wifi", Toast.LENGTH_SHORT).show()
+//        }
 
     }
 

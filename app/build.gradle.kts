@@ -75,6 +75,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/beans.xml"
         }
     }
 }
@@ -83,6 +84,7 @@ dependencies {
     implementation(project(":video-player"))
     implementation(project(":download"))
     implementation(project(":danmaku"))
+    implementation(project(":clinglib"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

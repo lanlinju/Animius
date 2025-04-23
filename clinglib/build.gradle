@@ -1,0 +1,51 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    compileSdk rootProject.ext.compileSdkVersion
+    namespace "com.android.cling"
+    defaultConfig {
+        minSdk rootProject.ext.minVersion
+        targetSdk rootProject.ext.compileSdkVersion
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
+    }
+
+
+    packagingOptions {
+        exclude 'META-INF/beans.xml'
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    // Cling library 只能使用2.1.1 ，当2.1.2时无法搜索到设备
+    api 'org.fourthline.cling:cling-core:2.1.1'
+    api 'org.fourthline.cling:cling-support:2.1.1'
+    // Jetty library
+    api 'org.eclipse.jetty:jetty-server:8.1.22.v20160922'
+    api 'org.eclipse.jetty:jetty-servlet:8.1.22.v20160922'
+    api 'org.eclipse.jetty:jetty-client:8.1.22.v20160922'
+    api 'org.slf4j:slf4j-simple:1.7.25'
+    compileOnly('android.arch.lifecycle:livedata:1.1.1')
+    // Servlet
+    api 'javax.servlet:javax.servlet-api:3.1.0'
+}
+
+apply from: "uploadLocal.gradle"

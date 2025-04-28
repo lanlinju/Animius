@@ -30,6 +30,8 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLParameters
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
+-dontwarn javax.enterprise.context.ApplicationScoped
+-dontwarn javax.enterprise.inject.Alternative
 
 # 保留 SourceMode 枚举类及其成员
 -keep enum com.lanlinju.animius.util.SourceMode { *; }

@@ -2,11 +2,11 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    compileSdk rootProject.ext.compileSdkVersion
+    compileSdk 35
     namespace "com.android.cling"
     defaultConfig {
-        minSdk rootProject.ext.minVersion
-        targetSdk rootProject.ext.compileSdkVersion
+        minSdk 26
+        targetSdk 35
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
     }
@@ -19,12 +19,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
 
@@ -43,9 +43,8 @@ dependencies {
     api 'org.eclipse.jetty:jetty-servlet:8.1.22.v20160922'
     api 'org.eclipse.jetty:jetty-client:8.1.22.v20160922'
     api 'org.slf4j:slf4j-simple:1.7.25'
-    compileOnly('android.arch.lifecycle:livedata:1.1.1')
     // Servlet
     api 'javax.servlet:javax.servlet-api:3.1.0'
+    implementation(libs.androidx.lifecycle.livedata.core.ktx)
 }
 
-apply from: "uploadLocal.gradle"

@@ -46,10 +46,12 @@ fun File.mappedByteBuffer(position: Long, size: Long): MappedByteBuffer {
 }
 
 fun File.clear() {
+    if (!exists()) return
+
     val shadow = shadow()
     val tmp = tmp()
 
-    for (f in parentFile.listFiles()!!) {
+    for (f in parentFile.listFiles()) {
         if (f.name.startsWith("${this.name}-") && f.name.endsWith(".ts")) f.delete()
     }
 

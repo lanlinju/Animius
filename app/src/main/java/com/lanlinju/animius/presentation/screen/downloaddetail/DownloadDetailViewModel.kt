@@ -59,8 +59,8 @@ class DownloadDetailViewModel @Inject constructor(
 
     fun deleteDownloadDetail(downloadUrl: String, deleteFile:() -> Unit) {
         viewModelScope.launch {
-            deleteFile()
             roomRepository.deleteDownloadDetail(downloadUrl)
+            deleteFile()
         }
     }
 }

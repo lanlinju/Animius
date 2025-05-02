@@ -244,17 +244,19 @@ class VideoPlayerViewModel @Inject constructor(
      * 切换到下一集
      * @param currPlayPosition 当前视频的播放位置, 单位：毫秒
      */
-    fun nextEpisode(currPlayPosition: Long) {
-        _videoState.value.data?.let { video ->
-            val nextEpisodeIndex = video.currentEpisodeIndex + 1
-            if (nextEpisodeIndex < video.episodes.size) {
-                // 获取下一集视频
-                getVideo(
-                    video.episodes[nextEpisodeIndex].url,
-                    video.episodes[nextEpisodeIndex].name,
-                    nextEpisodeIndex,
-                    currPlayPosition
-                )
+    fun nextEpisode(currPlayPosition: Long, isDelayEnabled: Boolean = false) {
+        viewModelScope.launch {
+            _videoState.value.data?.let { video ->
+                val nextEpisodeIndex = video.currentEpisodeIndex + 1
+                if (nextEpisodeIndex < video.episodes.size) {
+                    // 获取下一集视频
+                    getVideo(
+                        video.episodes[nextEpisodeIndex].url,
+                        video.episodes[nextEpisodeIndex].name,
+                        nextEpisodeIndex,
+                        currPlayPosition
+                    )
+                }
             }
         }
     }

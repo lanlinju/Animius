@@ -62,6 +62,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -208,7 +209,7 @@ fun VideoPlayScreen(
 
                 // Danmaku and additional UI components
                 DanmakuHost(playerState, danmakuSession, enabledDanmaku)
-                VideoStateMessage(playerState)
+                VideoStateMessage(playerState, viewModel = viewModel)
                 VolumeBrightnessIndicator(playerState)
                 VideoSideSheet(video, playerState, viewModel)
 
@@ -467,7 +468,15 @@ private fun showSystemBars(view: View, activity: Activity) {
 }
 
 @Composable
-private fun VideoStateMessage(playerState: VideoPlayerState, modifier: Modifier = Modifier) {
+private fun VideoStateMessage(
+    playerState: VideoPlayerState,
+    viewModel: VideoPlayerViewModel,
+    modifier: Modifier = Modifier
+) {
+    val videoState = viewModel.videoState.collectAsState().value
+    val coroutineScope = rememberCoroutineScope()
+    var autoPlayTriggered by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -483,8 +492,20 @@ private fun VideoStateMessage(playerState: VideoPlayerState, modifier: Modifier 
         }
 
         if (playerState.isEnded.value) {
-            ShowVideoMessage(stringResource(id = R.string.video_ended_msg))
-            playerState.control.retry()
+            // 自动连播逻辑
+            val hasNext =
+                videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
+            if (hasNext && !autoPlayTriggered) {
+                autoPlayTriggered = true
+                println("autoPlayTriggered")
+                viewModel.nextEpisode(playerState.player.currentPosition, true)
+            }
+            ShowVideoMessage(
+                if (hasNext) "即将自动播放下一集..." else stringResource(id = R.string.video_ended_msg)
+            )
+            if (!hasNext) {
+                playerState.control.retry()
+            }
         }
 
         if (playerState.isSeeking.value) {
@@ -497,7 +518,13 @@ private fun VideoStateMessage(playerState: VideoPlayerState, modifier: Modifier 
         if (playerState.isLongPress.value) {
             FastForwardIndicator(Modifier.align(Alignment.TopCenter))
         }
+    }
 
+    // 重置 autoPlayTriggered，当不是结束状态时
+    LaunchedEffect(playerState.isEnded.value) {
+        if (!playerState.isEnded.value) {
+            autoPlayTriggered = false
+        }
     }
 }
 
@@ -698,7 +725,8 @@ private fun VideoSideSheet(
     var selectedResizeIndex by remember { mutableIntStateOf(0) }    // 适应
 
     if (playerState.isSpeedUiVisible.value) {
-        SpeedSideSheet(selectedSpeedIndex,
+        SpeedSideSheet(
+            selectedSpeedIndex,
             onSpeedClick = { index, (speedText, speed) ->
                 selectedSpeedIndex = index
                 playerState.setSpeedText(if (index == 3) "倍速" else speedText)
@@ -886,15 +914,16 @@ private fun SideSheet(
             }.invokeOnCompletion { onDismissRequest() }
         }
 
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { position ->
-                    if (position.x < fullWidth - sideSheetWidthDp.toPx()) {
-                        dismissRequestHandler()
-                    }
-                })
-            }) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { position ->
+                        if (position.x < fullWidth - sideSheetWidthDp.toPx()) {
+                            dismissRequestHandler()
+                        }
+                    })
+                }) {
             AnimatedVisibility(
                 visibleState = visibleState,
                 modifier = Modifier.align(Alignment.CenterEnd),

@@ -347,8 +347,14 @@ fun AnimeDetailScreen(
                             lastPosition = animeDetail.lastPosition,
                             onDismissRequest = { showDownloadBottomSheet = false },
                             onDownloadClick = { index, episode ->
+
                                 val path =
-                                    context.getExternalFilesDir("download/${viewModel.mode}/${animeDetail.title}")!!.path + "/${episode.name}.mp4"
+                                    viewModel.getDefaultDownloadPath(
+                                        animeDetail.title,
+                                        episode.name,
+                                        context
+                                    )
+
                                 val downloadDetail = DownloadDetail(
                                     title = episode.name,
                                     imgUrl = animeDetail.img,

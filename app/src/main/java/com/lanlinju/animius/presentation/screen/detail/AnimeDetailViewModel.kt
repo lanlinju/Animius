@@ -1,5 +1,7 @@
 package com.lanlinju.animius.presentation.screen.detail
 
+import android.content.Context
+import android.os.Environment
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,9 +15,11 @@ import com.lanlinju.animius.domain.repository.AnimeRepository
 import com.lanlinju.animius.domain.repository.RoomRepository
 import com.lanlinju.animius.domain.usecase.GetAnimeDetailUseCase
 import com.lanlinju.animius.presentation.navigation.Screen
+import com.lanlinju.animius.util.KEY_USE_DOWNLOAD_DIRECTORY
 import com.lanlinju.animius.util.Resource
 import com.lanlinju.animius.util.SourceMode
 import com.lanlinju.animius.util.onSuccess
+import com.lanlinju.animius.util.preferences
 import com.lanlinju.download.download
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -72,6 +76,19 @@ class AnimeDetailViewModel @Inject constructor(
             _isFavourite.value = !_isFavourite.value
             roomRepository.addOrRemoveFavourite(favourite)
         }
+    }
+
+    fun getDefaultDownloadPath(title: String, episodeName: String, context: Context): String {
+        val isDownloadDirEnabled = context.preferences.getBoolean(KEY_USE_DOWNLOAD_DIRECTORY, false)
+
+        val baseDir = if (isDownloadDirEnabled) {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/Animius"
+        } else {
+            context.getExternalFilesDir("download")!!.path
+        }
+
+        val path = baseDir + "/${mode}/${title}/${episodeName}.mp4"
+        return path
     }
 
     fun addHistory(animeDetail: AnimeDetail, episode: Episode) {

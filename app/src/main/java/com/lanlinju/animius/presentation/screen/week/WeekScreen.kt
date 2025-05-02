@@ -91,6 +91,7 @@ import com.lanlinju.animius.util.GITHUB_RELEASE_ADDRESS
 import com.lanlinju.animius.util.KEY_AUTO_ORIENTATION_ENABLED
 import com.lanlinju.animius.util.KEY_IS_AUTO_CHECK_UPDATE
 import com.lanlinju.animius.util.KEY_SOURCE_MODE
+import com.lanlinju.animius.util.KEY_USE_DOWNLOAD_DIRECTORY
 import com.lanlinju.animius.util.SourceHolder
 import com.lanlinju.animius.util.SourceHolder.DEFAULT_ANIME_SOURCE
 import com.lanlinju.animius.util.SourceMode
@@ -670,6 +671,7 @@ private fun SettingsDialog(
 ) {
     var isAutoOrientation by rememberPreference(KEY_AUTO_ORIENTATION_ENABLED, true)
     var isAutoCheckUpdate by rememberPreference(KEY_IS_AUTO_CHECK_UPDATE, true)
+    var isDownloadDirEnabled by rememberPreference(KEY_USE_DOWNLOAD_DIRECTORY, false)
 
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -691,6 +693,12 @@ private fun SettingsDialog(
                     text = stringResource(id = R.string.auto_check_update),
                     checked = isAutoCheckUpdate,
                     onCheckedChange = { isAutoCheckUpdate = it }
+                )
+
+                SettingsItem(
+                    text = stringResource(R.string.use_download_directory),
+                    checked = isDownloadDirEnabled,
+                    onCheckedChange = { isDownloadDirEnabled = it }
                 )
 
                 TextButton(

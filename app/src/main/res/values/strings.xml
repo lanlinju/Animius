@@ -115,11 +115,13 @@
     <string name="copy_crash_log">复制崩溃日志</string>
     <string name="crash_log_has_been_copied">崩溃日志已复制</string>
 
-    <string name="auto_check_update">自动更新</string>
+    <string name="auto_check_update">自动检查更新</string>
     <string name="channel_selection">线路选择</string>
     <string name="channel_number">线路%1$s</string>
 
     <!-- 历史记录界面 -->
     <string name="clear_all_histories">清除全部记录</string>
     <string name="are_you_sure_you_want_to_clear_all_histories">确定要清除所有历史记录吗？</string>
+
+    <string name="use_download_directory">使用Download目录</string>
 </resources>

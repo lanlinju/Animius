@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.View
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
@@ -62,7 +63,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -113,13 +113,13 @@ import com.lanlinju.animius.domain.model.Video
 import com.lanlinju.animius.presentation.component.StateHandler
 import com.lanlinju.animius.presentation.screen.settings.DanmakuConfigData
 import com.lanlinju.animius.presentation.theme.AnimeTheme
+import com.lanlinju.animius.util.KEY_AUTO_CONTINUE_PLAY_ENABLED
 import com.lanlinju.animius.util.KEY_AUTO_ORIENTATION_ENABLED
 import com.lanlinju.animius.util.KEY_DANMAKU_CONFIG_DATA
 import com.lanlinju.animius.util.isAndroidTV
 import com.lanlinju.animius.util.isTabletDevice
 import com.lanlinju.animius.util.isWideScreen
 import com.lanlinju.animius.util.openExternalPlayer
-import com.lanlinju.animius.util.preferences
 import com.lanlinju.animius.util.rememberPreference
 import com.lanlinju.videoplayer.AdaptiveTextButton
 import com.lanlinju.videoplayer.ResizeMode
@@ -157,7 +157,9 @@ fun VideoPlayScreen(
 ) {
     val animeVideoState by viewModel.videoState.collectAsState()
     val view = LocalView.current
-    val activity = LocalContext.current as Activity
+    val activity = LocalActivity.current ?: LocalActivity.current as Activity
+    val isAutoOrientation by rememberPreference(KEY_AUTO_ORIENTATION_ENABLED, true)
+    var isAutoContinuePlayEnabled by rememberPreference(KEY_AUTO_CONTINUE_PLAY_ENABLED, false)
 
     // Handle screen orientation and screen-on state
     ManageScreenState(view, activity)
@@ -168,8 +170,7 @@ fun VideoPlayScreen(
         onFailure = { ShowFailurePage(viewModel, onBackClick) }
     ) { resource ->
         resource.data?.let { video ->
-            val isAutoOrientation =
-                activity.preferences.getBoolean(KEY_AUTO_ORIENTATION_ENABLED, true)
+
             val playerState = rememberVideoPlayerState(isAutoOrientation = isAutoOrientation)
             val enabledDanmaku by viewModel.enabledDanmaku.collectAsStateWithLifecycle()
             val danmakuSession by viewModel.danmakuSession.collectAsStateWithLifecycle()
@@ -202,16 +203,23 @@ fun VideoPlayScreen(
                         enabledDanmaku = enabledDanmaku,
                         onBackClick = { handleBackPress(playerState, onBackClick, view, activity) },
                         onNextClick = { viewModel.nextEpisode(playerState.player.currentPosition) },
-                        optionsContent = { OptionsContent(video) },
+                        optionsContent = {
+                            OptionsContent(
+                                video = video,
+                                isAutoContinuePlayEnabled = isAutoContinuePlayEnabled,
+                                onAutoContinuePlayClick = { isAutoContinuePlayEnabled = it }
+                            )
+                        },
                         onDanmakuClick = { viewModel.setEnabledDanmaku(it) }
                     )
                 }
 
                 // Danmaku and additional UI components
                 DanmakuHost(playerState, danmakuSession, enabledDanmaku)
-                VideoStateMessage(playerState, viewModel = viewModel)
+                VideoStateMessage(playerState, viewModel, isAutoContinuePlayEnabled)
                 VolumeBrightnessIndicator(playerState)
                 VideoSideSheet(video, playerState, viewModel)
+                RegisterPlaybackStateListener(playerState, viewModel, isAutoContinuePlayEnabled)
 
                 // Save video position on dispose
                 DisposableEffect(Unit) {
@@ -394,7 +402,12 @@ private fun Modifier.defaultRemoteControlHandler(
 }
 
 @Composable
-private fun OptionsContent(video: Video) {
+private fun OptionsContent(
+    video: Video,
+    isAutoContinuePlayEnabled: Boolean,
+    onAutoContinuePlayClick: (Boolean) -> Unit
+) {
+
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
@@ -415,6 +428,18 @@ private fun OptionsContent(video: Video) {
                 onClick = {
                     expanded = false
                     openExternalPlayer(video.url)
+                }
+            )
+
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.auto_continue_play),
+                        color = if (isAutoContinuePlayEnabled) MaterialTheme.colorScheme.primary else Color.Black
+                    )
+                },
+                onClick = {
+                    onAutoContinuePlayClick(!isAutoContinuePlayEnabled)
                 }
             )
         }
@@ -471,11 +496,10 @@ private fun showSystemBars(view: View, activity: Activity) {
 private fun VideoStateMessage(
     playerState: VideoPlayerState,
     viewModel: VideoPlayerViewModel,
+    isAutoContinuePlayEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     val videoState = viewModel.videoState.collectAsState().value
-    val coroutineScope = rememberCoroutineScope()
-    var autoPlayTriggered by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -486,26 +510,15 @@ private fun VideoStateMessage(
         }
 
         if (playerState.isError.value) {
-            ShowVideoMessage(stringResource(id = R.string.video_error_msg), onRetryClick = {
-                playerState.control.retry()
-            })
+            ShowVideoMessage(
+                stringResource(id = R.string.video_error_msg),
+                onRetryClick = { playerState.control.retry() }
+            )
         }
 
-        if (playerState.isEnded.value) {
-            // 自动连播逻辑
-            val hasNext =
-                videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
-            if (hasNext && !autoPlayTriggered) {
-                autoPlayTriggered = true
-                println("autoPlayTriggered")
-                viewModel.nextEpisode(playerState.player.currentPosition, true)
-            }
-            ShowVideoMessage(
-                if (hasNext) "即将自动播放下一集..." else stringResource(id = R.string.video_ended_msg)
-            )
-            if (!hasNext) {
-                playerState.control.retry()
-            }
+        val hasNext = videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
+        if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext) {
+            ShowVideoMessage(stringResource(R.string.auto_play_next, 3))
         }
 
         if (playerState.isSeeking.value) {
@@ -519,11 +532,29 @@ private fun VideoStateMessage(
             FastForwardIndicator(Modifier.align(Alignment.TopCenter))
         }
     }
+}
 
-    // 重置 autoPlayTriggered，当不是结束状态时
-    LaunchedEffect(playerState.isEnded.value) {
-        if (!playerState.isEnded.value) {
-            autoPlayTriggered = false
+@Composable
+fun RegisterPlaybackStateListener(
+    playerState: VideoPlayerState,
+    viewModel: VideoPlayerViewModel,
+    isAutoContinuePlayEnabled: Boolean
+) {
+
+    LaunchedEffect(isAutoContinuePlayEnabled) {
+        launch {
+            snapshotFlow { playerState.isEnded.value }.collect { isEnded ->
+                if (isEnded && isAutoContinuePlayEnabled) {
+                    viewModel.onPlayerEnded(playerState.player.currentPosition)
+                }
+            }
+        }
+        launch {
+            snapshotFlow { playerState.isSeeking.value }.collect { isSeeking ->
+                if (isSeeking && isAutoContinuePlayEnabled) {
+                    viewModel.cancelAutoContinuePlay() // 拖动进度条时调用，取消自动连播
+                }
+            }
         }
     }
 }
@@ -752,6 +783,7 @@ private fun VideoSideSheet(
             episodes = video.episodes,
             selectedEpisodeIndex = selectedEpisodeIndex,
             onEpisodeClick = { index, episode ->
+                viewModel.cancelAutoContinuePlay()
                 selectedEpisodeIndex = index
                 viewModel.getVideo(
                     episode.url,
@@ -991,4 +1023,6 @@ fun SideSheetPreview() {
         }
     }
 }
+
+
 

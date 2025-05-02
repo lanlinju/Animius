@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @HiltViewModel
@@ -59,6 +61,10 @@ class VideoPlayerViewModel @Inject constructor(
     private var currentEpisodeUrl: String = ""
     private var currentEpisodeIndex: Int = 0
     private var historyId: Long = -1L
+
+    // 自动连播相关
+    private var autoPlayJob: Job? = null
+    private var autoPlayTriggered = false
 
     init {
         viewModelScope.launch {
@@ -238,6 +244,26 @@ class VideoPlayerViewModel @Inject constructor(
             saveVideoPosition(videoPosition)
             getVideoFromRemote(url, index)
         }
+    }
+
+    fun onPlayerEnded(currPlayPosition: Long) {
+        startAutoContinuePlay(currPlayPosition)
+    }
+
+    /**
+     * 播放器播放结束时触发，启动 3 秒延迟的自动连播
+     */
+    private fun startAutoContinuePlay(currPlayPosition: Long) {
+        cancelAutoContinuePlay()
+        autoPlayJob = viewModelScope.launch {
+            delay(3000)
+            nextEpisode(currPlayPosition)
+        }
+    }
+
+    fun cancelAutoContinuePlay() {
+        autoPlayJob?.cancel()
+        autoPlayJob = null
     }
 
     /**

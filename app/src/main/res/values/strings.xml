@@ -124,4 +124,6 @@
     <string name="are_you_sure_you_want_to_clear_all_histories">确定要清除所有历史记录吗？</string>
 
     <string name="use_download_directory">使用Download目录</string>
+    <string name="auto_continue_play">自动连播</string>
+    <string name="auto_play_next">%1$ds后自动播放下一集...</string>
 </resources>

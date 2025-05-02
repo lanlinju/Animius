@@ -32,23 +32,15 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Decode and write the signing key from secrets
-      - name: Decode signing key
-        run: echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -di > keystore.jks
-
-      # Build the APK
+      # Build the Debug APK
       - name: Build APK
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug
         env:
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           DANDANPLAY_APP_ID: ${{ secrets.DANDANPLAY_APP_ID }}
           DANDANPLAY_APP_SECRET: ${{ secrets.DANDANPLAY_APP_SECRET }}
 
-      # Sign the APK (Already handled by Gradle)
       # Upload APK as artifact
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4

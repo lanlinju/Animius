@@ -42,10 +42,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -83,6 +86,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
@@ -933,42 +937,35 @@ private fun EpisodeSideSheet(
 ) {
     val context = LocalContext.current
     val isAndroidTV = remember { isAndroidTV(context) }
-    SideSheet(onDismissRequest = onDismissRequest) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(4),
-            horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.small_padding)),
-            state = rememberLazyGridState(
-                initialFirstVisibleItemIndex = selectedEpisodeIndex,
-                -200
-            )
-        ) {
-            itemsIndexed(episodes) { index, episode ->
+    SideSheet(onDismissRequest = onDismissRequest, widthRatio = 0.38f) {
 
+        LazyColumn(
+            modifier = Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            state = rememberLazyListState(selectedEpisodeIndex, -200)
+        ) {
+            itemsIndexed(episodes) {index, episode ->
                 val focusRequester = remember { FocusRequester() }
                 var isFocused by remember { mutableStateOf(false) }
                 val selected = index == selectedEpisodeIndex
                 OutlinedButton(
                     onClick = { onEpisodeClick(index, episode) },
-                    contentPadding = PaddingValues(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isFocused && isAndroidTV) MaterialTheme.colorScheme.primary.copy(
-                            alpha = 0.3f
-                        ) else Color.Unspecified
-                    ),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 14.dp),
+                    shape = RoundedCornerShape(4.dp),
                     border = BorderStroke(
-                        if (isFocused && isAndroidTV) 2.dp else ButtonDefaults.outlinedButtonBorder().width,
-                        ButtonDefaults.outlinedButtonBorder().brush
+                        1.0.dp,
+                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(0.5f)
                     ),
                     modifier = Modifier
+                        .fillMaxSize()
                         .onFocusChanged(onFocusChanged = { isFocused = it.isFocused })
-                        .scale(if (isFocused && isAndroidTV) 1.1f else 1f)
                         .focusRequester(focusRequester)
                         .focusable()
                 ) {
                     Text(
                         text = episode.name,
                         color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelLarge,
                         maxLines = 1
                     )
                 }
@@ -1042,7 +1039,7 @@ private fun SideSheet(
                     modifier = Modifier
                         .width(sideSheetWidthDp)
                         .fillMaxHeight()
-                        .background(color = Color.Black.copy(alpha = 0.8f))
+                        .background(color = Color.Black.copy(alpha = 0.85f))
                         .padding(8.dp)
                 ) {
                     content()

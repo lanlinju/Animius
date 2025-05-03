@@ -858,7 +858,7 @@ private fun VideoSideSheet(
     }
 
     if (playerState.isEpisodeUiVisible.value) {
-        var selectedEpisodeIndex by remember { mutableIntStateOf(video.currentEpisodeIndex) }
+        var selectedEpisodeIndex by remember(video.currentEpisodeIndex) { mutableIntStateOf(video.currentEpisodeIndex) }
         EpisodeSideSheet(
             episodes = video.episodes,
             selectedEpisodeIndex = selectedEpisodeIndex,

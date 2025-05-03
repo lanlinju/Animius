@@ -864,6 +864,8 @@ private fun VideoSideSheet(
             episodes = video.episodes,
             selectedEpisodeIndex = selectedEpisodeIndex,
             onEpisodeClick = { index, episode ->
+                playerState.control.pause()
+                playerState.setLoading(true)
                 viewModel.cancelAutoContinuePlay()
                 selectedEpisodeIndex = index
                 viewModel.getVideo(

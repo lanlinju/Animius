@@ -103,6 +103,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
@@ -948,28 +949,35 @@ private fun EpisodeSideSheet(
                 val focusRequester = remember { FocusRequester() }
                 var isFocused by remember { mutableStateOf(false) }
                 val selected = index == selectedEpisodeIndex
+
                 OutlinedButton(
                     onClick = { onEpisodeClick(index, episode) },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 14.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
                     shape = RoundedCornerShape(4.dp),
                     border = BorderStroke(
                         1.0.dp,
-                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
-                            0.5f
-                        )
+                        if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline.copy(0.5f)
                     ),
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .onFocusChanged(onFocusChanged = { isFocused = it.isFocused })
                         .focusRequester(focusRequester)
                         .focusable()
                 ) {
-                    Text(
-                        text = episode.name,
-                        color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (selected) {
+                            EpisodePlaybackIndicator(Modifier.align(Alignment.CenterStart))
+                        }
+
+                        Text(
+                            text = episode.name,
+                            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
 
                 LaunchedEffect(selected) {

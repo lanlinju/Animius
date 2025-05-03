@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -81,6 +83,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -94,8 +97,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -113,6 +118,7 @@ import com.lanlinju.animius.domain.model.Video
 import com.lanlinju.animius.presentation.component.StateHandler
 import com.lanlinju.animius.presentation.screen.settings.DanmakuConfigData
 import com.lanlinju.animius.presentation.theme.AnimeTheme
+import com.lanlinju.animius.presentation.theme.padding
 import com.lanlinju.animius.util.KEY_AUTO_CONTINUE_PLAY_ENABLED
 import com.lanlinju.animius.util.KEY_AUTO_ORIENTATION_ENABLED
 import com.lanlinju.animius.util.KEY_DANMAKU_CONFIG_DATA
@@ -518,7 +524,7 @@ private fun VideoStateMessage(
 
         val hasNext = videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
         if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext) {
-            ShowVideoMessage(stringResource(R.string.auto_play_next, 3))
+            FloatingMessageIndicator(stringResource(R.string.auto_play_next, 3))
         }
 
         if (playerState.isSeeking.value) {
@@ -565,7 +571,7 @@ private fun FastForwardIndicator(modifier: Modifier) {
         modifier = modifier
             .padding(top = dimensionResource(id = R.dimen.medium_padding))
             .height(40.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(Color.Black.copy(0.35f)),
         contentAlignment = Alignment.Center
     ) {
@@ -629,7 +635,7 @@ private fun VolumeBrightnessIndicator(
             modifier = modifier
                 .width(200.dp)
                 .aspectRatio(3.5f)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(Color.Black.copy(0.35f)),
             contentAlignment = Alignment.Center
         ) {
@@ -685,23 +691,51 @@ private fun TimelineIndicator(
     videoDurationMs: Long,
     modifier: Modifier = Modifier
 ) {
+    FloatingMessageIndicator(
+        text = prettyVideoTimestamp(
+            videoPositionMs.milliseconds,
+            videoDurationMs.milliseconds
+        ),
+        modifier = modifier
+    )
+}
+
+@Composable
+fun FloatingMessageIndicator(
+    text: String,
+    modifier: Modifier = Modifier,
+    minWidth: Dp = 120.dp,
+    minHeight: Dp = 48.dp,
+    backgroundColor: Color = Color.Black.copy(alpha = 0.6f),
+    shape: Shape = RoundedCornerShape(8.dp),
+    textStyle: TextStyle = MaterialTheme.typography.bodyMedium,
+    textColor: Color = Color.White,
+    contentAlignment: Alignment = Alignment.Center,
+    contentPaddingValues: PaddingValues = PaddingValues(MaterialTheme.padding.medium)
+) {
     Box(
         modifier = modifier
-            .width(120.dp)
-            .aspectRatio(2.5f)
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.Black.copy(0.7f)),
-        contentAlignment = Alignment.Center
+            .defaultMinSize(minWidth, minHeight)
+            .clip(shape)
+            .background(backgroundColor),
+        contentAlignment = contentAlignment
     ) {
         Text(
-            text = prettyVideoTimestamp(
-                videoPositionMs.milliseconds,
-                videoDurationMs.milliseconds
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White
+            modifier = Modifier.padding(contentPaddingValues),
+            text = text,
+            style = textStyle,
+            color = textColor,
+            maxLines = 1,
         )
     }
+}
+
+@Preview
+@Composable
+private fun PreviewFloatingMessageIndicator() {
+    FloatingMessageIndicator(
+        text = "Hello World, Hello World, Hello World"
+    )
 }
 
 @Composable

@@ -12,7 +12,9 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -20,6 +22,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -81,6 +84,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
@@ -92,6 +98,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -101,6 +108,7 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -974,6 +982,93 @@ private fun EpisodeSideSheet(
     }
 }
 
+@Preview
+@Composable
+fun PreviewEEpisodePlaybackIndicator() {
+    EpisodePlaybackIndicator(
+        modifier = Modifier
+            .background(Color.Black.copy(0.35f))
+            .padding(16.dp)
+    )
+}
+
+@Composable
+fun EpisodePlaybackIndicator(modifier: Modifier = Modifier) {
+    BouncingBarsAnimation(modifier)
+}
+
+@Composable
+private fun BouncingBarsAnimation(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "BouncingBars")
+    val barWidth = 3.dp
+    val maxHeight = 14.dp
+    val minHeight = 5.dp
+    val barSpacing = barWidth / 2
+    val durationMs = 800
+    val startOffset = durationMs / 3
+    val barColor = MaterialTheme.colorScheme.primary
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(barSpacing)
+    ) {
+        repeat(3) { index ->
+            val heightProgress by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = keyframes {
+                        durationMillis = durationMs
+                        0f at 0
+                        1f at (durationMs / 2) //with FastOutSlowInEasing
+                        0f at durationMs
+                    },
+                    repeatMode = RepeatMode.Restart,
+                    initialStartOffset = StartOffset(index * startOffset)
+                ),
+                label = "bar_$index"
+            )
+
+            DynamicBar(
+                progress = heightProgress,
+                width = barWidth,
+                maxHeight = maxHeight,
+                minHeight = minHeight,
+                color = barColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun DynamicBar(
+    progress: Float,
+    width: Dp,
+    maxHeight: Dp,
+    minHeight: Dp,
+    color: Color
+) {
+    val density = LocalDensity.current
+    val animatedHeight = lerp(minHeight, maxHeight, progress)
+
+    Canvas(
+        modifier = Modifier
+            .width(width)
+            .height(maxHeight)
+    ) {
+        val barHeight = with(density) { animatedHeight.toPx() }
+        val cornerRadius = size.width / 2
+
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(0f, size.height - barHeight),
+            size = Size(size.width, barHeight),
+            cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+        )
+    }
+}
+
+
 // https://googlesamples.github.io/android-custom-lint-rules/checks/UnusedBoxWithConstraintsScope.md.html
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -1090,6 +1185,3 @@ fun SideSheetPreview() {
         }
     }
 }
-
-
-

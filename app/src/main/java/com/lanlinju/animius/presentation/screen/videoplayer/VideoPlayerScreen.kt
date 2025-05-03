@@ -155,7 +155,9 @@ fun VideoPlayScreen(
     viewModel: VideoPlayerViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
-    val animeVideoState by viewModel.videoState.collectAsState()
+    val animeVideoState by viewModel.videoState.collectAsStateWithLifecycle()
+    val danmakuEnabled by viewModel.danmakuEnabled.collectAsStateWithLifecycle()
+    val danmakuSession by viewModel.danmakuSession.collectAsStateWithLifecycle()
     val view = LocalView.current
     val activity = LocalActivity.current ?: LocalActivity.current as Activity
     val isAutoOrientation by rememberPreference(KEY_AUTO_ORIENTATION_ENABLED, true)
@@ -172,8 +174,6 @@ fun VideoPlayScreen(
         resource.data?.let { video ->
 
             val playerState = rememberVideoPlayerState(isAutoOrientation = isAutoOrientation)
-            val enabledDanmaku by viewModel.enabledDanmaku.collectAsStateWithLifecycle()
-            val danmakuSession by viewModel.danmakuSession.collectAsStateWithLifecycle()
 
             Box(
                 modifier = Modifier
@@ -194,15 +194,15 @@ fun VideoPlayScreen(
                         .focusable()
                         .defaultRemoteControlHandler(
                             playerState = playerState,
-                            onNextClick = { viewModel.nextEpisode(playerState.player.currentPosition) }
+                            onNextClick = { viewModel.playNextEpisode(playerState.player.currentPosition) }
                         )
                 ) {
                     VideoPlayerControl(
                         state = playerState,
                         title = "${video.title}-${video.episodeName}",
-                        enabledDanmaku = enabledDanmaku,
+                        danmakuEnabled = danmakuEnabled,
                         onBackClick = { handleBackPress(playerState, onBackClick, view, activity) },
-                        onNextClick = { viewModel.nextEpisode(playerState.player.currentPosition) },
+                        onNextClick = { viewModel.playNextEpisode(playerState.player.currentPosition) },
                         optionsContent = {
                             OptionsContent(
                                 video = video,
@@ -215,7 +215,7 @@ fun VideoPlayScreen(
                 }
 
                 // Danmaku and additional UI components
-                DanmakuHost(playerState, danmakuSession, enabledDanmaku)
+                DanmakuHost(playerState, danmakuSession, danmakuEnabled)
                 VideoStateMessage(playerState, viewModel, isAutoContinuePlayEnabled)
                 VolumeBrightnessIndicator(playerState)
                 VideoSideSheet(video, playerState, viewModel)

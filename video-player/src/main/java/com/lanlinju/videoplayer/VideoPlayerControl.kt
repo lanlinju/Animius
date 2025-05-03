@@ -54,7 +54,7 @@ fun VideoPlayerControl(
     background: Color = Color.Black.copy(0.2f),
     contentColor: Color = Color.LightGray,
     progressLineColor: Color = MaterialTheme.colorScheme.inversePrimary,
-    enabledDanmaku: Boolean,
+    danmakuEnabled: Boolean,
     onBackClick: () -> Unit = {},
     onNextClick: () -> Unit = {},
     onDanmakuClick: (Boolean) -> Unit = {},
@@ -91,7 +91,7 @@ fun VideoPlayerControl(
                     modifier = Modifier.fillMaxWidth(),
                     progressLineColor = progressLineColor,
                     state = state,
-                    enabledDanmaku = enabledDanmaku,
+                    enabledDanmaku = danmakuEnabled,
                     onNextClick = onNextClick,
                     onDanmakuClick = onDanmakuClick
                 )

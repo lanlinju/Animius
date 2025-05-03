@@ -1,5 +1,6 @@
 package com.lanlinju.animius.presentation.screen.videoplayer
 
+import android.app.Application
 import androidx.core.content.edit
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -38,6 +39,7 @@ class VideoPlayerViewModel @Inject constructor(
     private val roomRepository: RoomRepository,
     private val animeRepository: AnimeRepository,
     private val danmakuRepository: DanmakuRepository,
+    private val application: Application
 ) : ViewModel() {
 
     // 保存视频状态的流，默认为加载中
@@ -45,10 +47,10 @@ class VideoPlayerViewModel @Inject constructor(
     val videoState: StateFlow<Resource<Video>> get() = _videoState
 
     // 获取保存的偏好设置，初始化弹幕启用状态
-    private val preferences = AnimeApplication.getInstance().preferences
-    private val _enabledDanmaku =
+    private val preferences = application.preferences
+    private val _danmakuEnabled =
         MutableStateFlow(preferences.getBoolean(KEY_DANMAKU_ENABLED, false))
-    val enabledDanmaku = _enabledDanmaku.asStateFlow()
+    val danmakuEnabled = _danmakuEnabled.asStateFlow()
 
     private val _danmakuSession = MutableStateFlow<DanmakuSession?>(null)
     val danmakuSession = _danmakuSession.asStateFlow()
@@ -64,7 +66,6 @@ class VideoPlayerViewModel @Inject constructor(
 
     // 自动连播相关
     private var autoPlayJob: Job? = null
-    private var autoPlayTriggered = false
 
     init {
         viewModelScope.launch {
@@ -195,7 +196,7 @@ class VideoPlayerViewModel @Inject constructor(
         _danmakuSession.value = null // 清除当前剧集的弹幕
 
         // 如果未启用了弹幕，直接返回
-        if (!_enabledDanmaku.value) return
+        if (!_danmakuEnabled.value) return
 
         viewModelScope.launch {
             _videoState.value.data?.let { video ->
@@ -211,7 +212,7 @@ class VideoPlayerViewModel @Inject constructor(
      * @param enabled 弹幕启用状态
      */
     fun setEnabledDanmaku(enabled: Boolean) {
-        _enabledDanmaku.value = enabled
+        _danmakuEnabled.value = enabled
         preferences.edit { putBoolean(KEY_DANMAKU_ENABLED, enabled) }
         viewModelScope.launch {
             // 如果启用了弹幕且当前弹幕会话为空，则获取弹幕会话
@@ -257,7 +258,7 @@ class VideoPlayerViewModel @Inject constructor(
         cancelAutoContinuePlay()
         autoPlayJob = viewModelScope.launch {
             delay(3000)
-            nextEpisode(currPlayPosition)
+            playNextEpisode(currPlayPosition)
         }
     }
 
@@ -270,7 +271,7 @@ class VideoPlayerViewModel @Inject constructor(
      * 切换到下一集
      * @param currPlayPosition 当前视频的播放位置, 单位：毫秒
      */
-    fun nextEpisode(currPlayPosition: Long, isDelayEnabled: Boolean = false) {
+    fun playNextEpisode(currPlayPosition: Long) {
         viewModelScope.launch {
             _videoState.value.data?.let { video ->
                 val nextEpisodeIndex = video.currentEpisodeIndex + 1

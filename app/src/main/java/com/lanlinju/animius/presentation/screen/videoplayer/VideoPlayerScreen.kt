@@ -208,7 +208,11 @@ fun VideoPlayScreen(
                         title = "${video.title}-${video.episodeName}",
                         danmakuEnabled = danmakuEnabled,
                         onBackClick = { handleBackPress(playerState, onBackClick, view, activity) },
-                        onNextClick = { viewModel.playNextEpisode(playerState.player.currentPosition) },
+                        onNextClick = {
+                            playerState.control.pause()
+                            playerState.setLoading(true)
+                            viewModel.playNextEpisode(playerState.player.currentPosition)
+                        },
                         optionsContent = {
                             OptionsContent(
                                 video = video,
@@ -523,7 +527,7 @@ private fun VideoStateMessage(
         }
 
         val hasNext = videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
-        if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext) {
+        if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext && !playerState.isLoading.value) {
             val countdown = rememberCountdown(initialTime = 3)
             FloatingMessageIndicator(stringResource(R.string.auto_play_next, countdown))
         }
@@ -573,7 +577,10 @@ fun RegisterPlaybackStateListener(
         launch {
             snapshotFlow { playerState.isEnded.value }.collect { isEnded ->
                 if (isEnded && isAutoContinuePlayEnabled) {
-                    viewModel.onPlayerEnded(playerState.player.currentPosition)
+                    viewModel.startAutoContinuePlay(
+                        playerState.player.currentPosition,
+                        showLoading = { playerState.setLoading(true) }
+                    )
                 }
             }
         }

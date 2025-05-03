@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.anime.danmaku.api.DanmakuSession
-import com.lanlinju.animius.application.AnimeApplication
 import com.lanlinju.animius.domain.model.Episode
 import com.lanlinju.animius.domain.model.Video
 import com.lanlinju.animius.domain.model.WebVideo
@@ -65,7 +64,7 @@ class VideoPlayerViewModel @Inject constructor(
     private var historyId: Long = -1L
 
     // 自动连播相关
-    private var autoPlayJob: Job? = null
+    private var autoContinuePlayJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -247,24 +246,21 @@ class VideoPlayerViewModel @Inject constructor(
         }
     }
 
-    fun onPlayerEnded(currPlayPosition: Long) {
-        startAutoContinuePlay(currPlayPosition)
-    }
-
     /**
      * 播放器播放结束时触发，启动 3 秒延迟的自动连播
      */
-    private fun startAutoContinuePlay(currPlayPosition: Long) {
+    fun startAutoContinuePlay(currPlayPosition: Long, showLoading: () -> Unit) {
         cancelAutoContinuePlay()
-        autoPlayJob = viewModelScope.launch {
+        autoContinuePlayJob = viewModelScope.launch {
             delay(3000)
+            showLoading()
             playNextEpisode(currPlayPosition)
         }
     }
 
     fun cancelAutoContinuePlay() {
-        autoPlayJob?.cancel()
-        autoPlayJob = null
+        autoContinuePlayJob?.cancel()
+        autoContinuePlayJob = null
     }
 
     /**

@@ -512,7 +512,7 @@ private fun VideoStateMessage(
         contentAlignment = Alignment.Center
     ) {
         if (playerState.isLoading.value && !playerState.isError.value && !playerState.isSeeking.value) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            CircularProgressIndicator()
         }
 
         if (playerState.isError.value) {
@@ -524,7 +524,8 @@ private fun VideoStateMessage(
 
         val hasNext = videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
         if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext) {
-            FloatingMessageIndicator(stringResource(R.string.auto_play_next, 3))
+            val countdown = rememberCountdown(initialTime = 3)
+            FloatingMessageIndicator(stringResource(R.string.auto_play_next, countdown))
         }
 
         if (playerState.isSeeking.value) {
@@ -538,6 +539,27 @@ private fun VideoStateMessage(
             FastForwardIndicator(Modifier.align(Alignment.TopCenter))
         }
     }
+}
+
+@Composable
+fun rememberCountdown(
+    initialTime: Int = 3,
+    onTick: (Int) -> Unit = {},
+    onTimeout: () -> Unit = {}
+): Int {
+    var remaining by remember { mutableIntStateOf(initialTime) }
+
+    LaunchedEffect(initialTime) {
+        remaining = initialTime
+        while (remaining > 0) {
+            delay(1000)
+            remaining--
+            onTick(remaining)
+        }
+        onTimeout()
+    }
+
+    return remaining
 }
 
 @Composable
@@ -706,7 +728,7 @@ fun FloatingMessageIndicator(
     modifier: Modifier = Modifier,
     minWidth: Dp = 120.dp,
     minHeight: Dp = 48.dp,
-    backgroundColor: Color = Color.Black.copy(alpha = 0.6f),
+    backgroundColor: Color = Color.Black.copy(alpha = 0.7f),
     shape: Shape = RoundedCornerShape(8.dp),
     textStyle: TextStyle = MaterialTheme.typography.bodyMedium,
     textColor: Color = Color.White,

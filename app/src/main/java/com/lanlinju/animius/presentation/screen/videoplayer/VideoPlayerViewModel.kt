@@ -249,11 +249,10 @@ class VideoPlayerViewModel @Inject constructor(
     /**
      * 播放器播放结束时触发，启动 3 秒延迟的自动连播
      */
-    fun startAutoContinuePlay(currPlayPosition: Long, showLoading: () -> Unit) {
+    fun startAutoContinuePlay(currPlayPosition: Long) {
         cancelAutoContinuePlay()
         autoContinuePlayJob = viewModelScope.launch {
             delay(3000)
-            showLoading()
             playNextEpisode(currPlayPosition)
         }
     }

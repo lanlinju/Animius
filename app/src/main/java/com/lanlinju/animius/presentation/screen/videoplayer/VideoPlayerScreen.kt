@@ -41,18 +41,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -82,11 +78,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
@@ -545,7 +539,8 @@ private fun VideoStateMessage(
 
         val hasNext = videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
         if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext && !playerState.isLoading.value) {
-            val countdown = rememberCountdown(initialTime = 3)
+            val countdown =
+                rememberCountdown(initialTime = 3, onFinished = { playerState.setLoading(true) })
             FloatingMessageIndicator(stringResource(R.string.auto_play_next, countdown))
         }
 
@@ -566,7 +561,7 @@ private fun VideoStateMessage(
 fun rememberCountdown(
     initialTime: Int = 3,
     onTick: (Int) -> Unit = {},
-    onTimeout: () -> Unit = {}
+    onFinished: () -> Unit = {}
 ): Int {
     var remaining by remember { mutableIntStateOf(initialTime) }
 
@@ -577,7 +572,7 @@ fun rememberCountdown(
             remaining--
             onTick(remaining)
         }
-        onTimeout()
+        onFinished()
     }
 
     return remaining
@@ -594,10 +589,7 @@ fun RegisterPlaybackStateListener(
         launch {
             snapshotFlow { playerState.isEnded.value }.collect { isEnded ->
                 if (isEnded && isAutoContinuePlayEnabled) {
-                    viewModel.startAutoContinuePlay(
-                        playerState.player.currentPosition,
-                        showLoading = { playerState.setLoading(true) }
-                    )
+                    viewModel.startAutoContinuePlay(playerState.player.currentPosition)
                 }
             }
         }
@@ -944,7 +936,7 @@ private fun EpisodeSideSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             state = rememberLazyListState(selectedEpisodeIndex, -200)
         ) {
-            itemsIndexed(episodes) {index, episode ->
+            itemsIndexed(episodes) { index, episode ->
                 val focusRequester = remember { FocusRequester() }
                 var isFocused by remember { mutableStateOf(false) }
                 val selected = index == selectedEpisodeIndex
@@ -954,7 +946,9 @@ private fun EpisodeSideSheet(
                     shape = RoundedCornerShape(4.dp),
                     border = BorderStroke(
                         1.0.dp,
-                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(0.5f)
+                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
+                            0.5f
+                        )
                     ),
                     modifier = Modifier
                         .fillMaxSize()

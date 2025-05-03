@@ -49,6 +49,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -115,6 +116,7 @@ import com.anime.danmaku.ui.rememberDanmakuHostState
 import com.lanlinju.animius.R
 import com.lanlinju.animius.domain.model.Episode
 import com.lanlinju.animius.domain.model.Video
+import com.lanlinju.animius.presentation.component.Forward85
 import com.lanlinju.animius.presentation.component.StateHandler
 import com.lanlinju.animius.presentation.screen.settings.DanmakuConfigData
 import com.lanlinju.animius.presentation.theme.AnimeTheme
@@ -217,7 +219,8 @@ fun VideoPlayScreen(
                             OptionsContent(
                                 video = video,
                                 isAutoContinuePlayEnabled = isAutoContinuePlayEnabled,
-                                onAutoContinuePlayClick = { isAutoContinuePlayEnabled = it }
+                                onAutoContinuePlayClick = { isAutoContinuePlayEnabled = it },
+                                onForwardClick = { playerState.control.skip(85000) }
                             )
                         },
                         onDanmakuClick = { viewModel.setEnabledDanmaku(it) }
@@ -415,45 +418,55 @@ private fun Modifier.defaultRemoteControlHandler(
 private fun OptionsContent(
     video: Video,
     isAutoContinuePlayEnabled: Boolean,
-    onAutoContinuePlayClick: (Boolean) -> Unit
+    onAutoContinuePlayClick: (Boolean) -> Unit,
+    onForwardClick: () -> Unit = {}
 ) {
-
     var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
+    Row {
+        IconButton(onClick = onForwardClick) {
             Icon(
-                imageVector = Icons.Rounded.MoreVert,
-                contentDescription = null
+                imageVector = Icons.Rounded.Forward85,
+                contentDescription = "Forward 85s"
             )
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(text = stringResource(id = R.string.external_play))
-                },
-                onClick = {
-                    expanded = false
-                    openExternalPlayer(video.url)
-                }
-            )
+        Box {
+            IconButton(onClick = { expanded = true }) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = null
+                )
+            }
 
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.auto_continue_play),
-                        color = if (isAutoContinuePlayEnabled) MaterialTheme.colorScheme.primary else Color.Black
-                    )
-                },
-                onClick = {
-                    onAutoContinuePlayClick(!isAutoContinuePlayEnabled)
-                }
-            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(text = stringResource(id = R.string.external_play))
+                    },
+                    onClick = {
+                        expanded = false
+                        openExternalPlayer(video.url)
+                    }
+                )
+
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.auto_continue_play),
+                            color = if (isAutoContinuePlayEnabled) MaterialTheme.colorScheme.primary else Color.Black
+                        )
+                    },
+                    onClick = {
+                        onAutoContinuePlayClick(!isAutoContinuePlayEnabled)
+                    }
+                )
+            }
         }
     }
+
 }
 
 @SuppressLint("SourceLockedOrientationActivity")

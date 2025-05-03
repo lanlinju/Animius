@@ -1,4 +1,4 @@
-package com.imherrera.videoplayer.icons
+package com.lanlinju.videoplayer.icons
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.materialIcon

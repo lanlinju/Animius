@@ -37,8 +37,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.imherrera.videoplayer.icons.Fullscreen
-import com.imherrera.videoplayer.icons.FullscreenExit
+import com.lanlinju.videoplayer.icons.Fullscreen
+import com.lanlinju.videoplayer.icons.FullscreenExit
 import com.lanlinju.videoplayer.component.Slider
 import com.lanlinju.videoplayer.icons.ArrowBackIos
 import com.lanlinju.videoplayer.icons.Pause

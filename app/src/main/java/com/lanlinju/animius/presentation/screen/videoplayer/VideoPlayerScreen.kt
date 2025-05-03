@@ -1011,9 +1011,9 @@ fun EpisodePlaybackIndicator(modifier: Modifier = Modifier) {
 private fun BouncingBarsAnimation(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "BouncingBars")
     val barWidth = 3.dp
-    val maxHeight = 14.dp
+    val maxHeight = 16.dp
     val minHeight = 5.dp
-    val barSpacing = barWidth / 2
+    val barSpacing = 2.dp
     val durationMs = 800
     val startOffset = durationMs / 3
     val barColor = MaterialTheme.colorScheme.primary

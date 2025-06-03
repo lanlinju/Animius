@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.sakura.anime"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sakura.anime"
         minSdk = 21
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 25
         versionName = "1.2.4"
 

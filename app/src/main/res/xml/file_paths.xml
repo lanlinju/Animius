@@ -11,4 +11,8 @@
     <external-cache-path
         name="ext_cache_files"
         path="." />
+
+    <external-path
+        name="downloads"
+        path="Download/" />
 </paths>

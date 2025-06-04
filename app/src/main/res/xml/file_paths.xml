@@ -7,4 +7,8 @@
     <external-files-path
         name="ext_files"
         path="." />
+
+    <external-cache-path
+        name="ext_cache_files"
+        path="." />
 </paths>

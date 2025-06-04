@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.UiModeManager
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.ACTION_SEND
 import android.content.Intent.ACTION_VIEW
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -11,8 +12,11 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
+import android.os.Build
 import android.util.Base64
 import android.util.Log
+import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.core.content.FileProvider.getUriForFile
 import coil.ImageLoader
 import com.sakura.anime.BuildConfig
@@ -112,6 +116,50 @@ fun openExternalPlayer(videoUrl: String) {
     }
     intent.setDataAndType(uri, "video/*")
     context.startActivity(intent)
+}
+
+/**
+ * 分享崩溃日志文件
+ */
+fun Context.shareCrashLog() {
+    val logUri = getCrashLogUri()
+    val intent = Intent(ACTION_SEND).apply {
+        setDataAndType(logUri, "text/plain")
+        putExtra(Intent.EXTRA_STREAM, logUri)
+        addFlags(FLAG_ACTIVITY_NEW_TASK)
+        addFlags(FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    startActivity(Intent.createChooser(intent, "Share crash log"))
+}
+
+fun Context.logCrashToFile(e: Throwable) {
+    val logFile = File(externalCacheDir, CRASH_LOG_FILE)
+    logFile.writeText(getCrashLogInfo(e))
+
+}
+
+fun Context.getCrashLogInfo(e: Throwable): String {
+    return "${getDebugInfo(this)}\n\n${e.stackTraceToString()}"
+}
+
+private fun getDebugInfo(context: Context): String {
+    return """
+            App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})
+            Android version: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}; build ${Build.DISPLAY})
+            Device brand: ${Build.BRAND}
+            Device manufacturer: ${Build.MANUFACTURER}
+            Device name: ${Build.DEVICE} (${Build.PRODUCT})
+            Device model: ${Build.MODEL}
+        """.trimIndent()
+}
+
+private fun Context.getCrashLogUri(): Uri {
+    val logFile = File(externalCacheDir, CRASH_LOG_FILE)
+    return getUriForFile(this, "$packageName.provider", logFile)
+}
+
+fun Context.toast(@StringRes resId: Int) {
+    Toast.makeText(this, getString(resId), Toast.LENGTH_LONG).show()
 }
 
 /**

@@ -1,5 +1,7 @@
 package com.sakura.anime.util
 
+const val CRASH_LOG_FILE = "anime_crash_logs.txt"
+
 const val CROSSFADE_DURATION = 500
 const val VIDEO_ASPECT_RATIO = 1.778f
 

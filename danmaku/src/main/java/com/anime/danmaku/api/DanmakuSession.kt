@@ -273,13 +273,14 @@ internal class DanmakuSessionAlgorithm(val state: DanmakuSessionFlowState) {
  * Danmaku Sanitizer
  */
 private fun sanitize(danmaku: Danmaku): Danmaku = danmaku.run {
-    if (text.indexOf("\n") == -1) return@run this
+    if (text.indexOf("\n") == -1 && text.isNotEmpty()) return@run this
 
     copy(
         text = text
             .replace("\n\r", " ")
             .replace("\r\n", " ")
             .replace("\n", " ")
-            .trim(),
+            .trim()
+            .ifEmpty { " " },
     )
 }

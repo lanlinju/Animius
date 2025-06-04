@@ -180,7 +180,7 @@ internal fun ExoPlayer.setVideoUrl(url: String, headers: Map<String, String>) {
 @OptIn(UnstableApi::class)
 internal fun loadControlCreator(): LoadControl {
     return DefaultLoadControl.Builder()
-        .setBufferDurationsMs(360000, 600000, 1000, 5000)
-        .setBackBuffer(120000, true)
+        .setBufferDurationsMs(50_000, 90_000, 2000, 5000)
+        .setBackBuffer(20_000, true)
         .build()
 }

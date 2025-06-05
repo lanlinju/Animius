@@ -28,6 +28,9 @@ android {
         buildConfigField("String", "DANDANPLAY_APP_ID", "\"$dandanplayAppId\"")
         buildConfigField("String", "DANDANPLAY_APP_SECRET", "\"$dandanplayAppSecret\"")
 
+        val devEnv = System.getenv("DEV") ?: "false"
+        buildConfigField("Boolean", "DEV", devEnv)
+
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }

@@ -25,7 +25,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Anime"
+rootProject.name = "Animius"
 include(":app")
 include(":video-player")
 include(":download")

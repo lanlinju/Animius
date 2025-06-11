@@ -15,6 +15,7 @@ import kotlinx.serialization.json.Json
 const val KEY_SOURCE_MODE = "animeSourceMode"
 const val KEY_HOME_BACKGROUND_URI = "homeBackgroundUri"
 const val KEY_AUTO_ORIENTATION_ENABLED = "autoOrientationEnabled"
+const val KEY_AUTO_CONTINUE_PLAY_ENABLED = "autoContinuePlayEnabled" // 自动连播（播放结束后自动播放下一个剧集）
 
 // theme
 const val KEY_CUSTOM_COLOR = "customColor"

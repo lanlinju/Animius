@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -80,6 +81,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -93,8 +95,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -112,6 +116,7 @@ import com.sakura.anime.domain.model.Video
 import com.sakura.anime.presentation.component.StateHandler
 import com.sakura.anime.presentation.screen.settings.DanmakuConfigData
 import com.sakura.anime.presentation.theme.AnimeTheme
+import com.sakura.anime.util.KEY_AUTO_CONTINUE_PLAY_ENABLED
 import com.sakura.anime.util.KEY_AUTO_ORIENTATION_ENABLED
 import com.sakura.anime.util.KEY_DANMAKU_CONFIG_DATA
 import com.sakura.anime.util.isAndroidTV
@@ -172,6 +177,10 @@ fun VideoPlayScreen(
             val playerState = rememberVideoPlayerState(isAutoOrientation = isAutoOrientation)
             val enabledDanmaku by viewModel.enabledDanmaku.collectAsStateWithLifecycle()
             val danmakuSession by viewModel.danmakuSession.collectAsStateWithLifecycle()
+            var isAutoContinuePlayEnabled by rememberPreference(
+                KEY_AUTO_CONTINUE_PLAY_ENABLED,
+                true
+            )
 
             Box(
                 modifier = Modifier
@@ -210,9 +219,10 @@ fun VideoPlayScreen(
 
                 // Danmaku and additional UI components
                 DanmakuHost(playerState, danmakuSession, enabledDanmaku)
-                VideoStateMessage(playerState)
+                VideoStateMessage(playerState, viewModel, isAutoContinuePlayEnabled)
                 VolumeBrightnessIndicator(playerState)
                 VideoSideSheet(video, playerState, viewModel)
+                RegisterPlaybackStateListener(playerState, viewModel, isAutoContinuePlayEnabled)
 
                 LaunchedEffect(Unit) {
                     // 页面加载时请求焦点
@@ -476,7 +486,14 @@ private fun showSystemBars(view: View, activity: Activity) {
 }
 
 @Composable
-private fun VideoStateMessage(playerState: VideoPlayerState, modifier: Modifier = Modifier) {
+private fun VideoStateMessage(
+    playerState: VideoPlayerState,
+    viewModel: VideoPlayViewModel,
+    isAutoContinuePlayEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val videoState = viewModel.videoState.collectAsState().value
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -486,14 +503,16 @@ private fun VideoStateMessage(playerState: VideoPlayerState, modifier: Modifier 
         }
 
         if (playerState.isError.value) {
-            ShowVideoMessage(stringResource(id = R.string.video_error_msg), onRetryClick = {
-                playerState.control.retry()
-            })
+            ShowVideoMessage(
+                stringResource(id = R.string.video_error_msg),
+                onRetryClick = { playerState.control.retry() }
+            )
         }
 
-        if (playerState.isEnded.value) {
-            ShowVideoMessage(stringResource(id = R.string.video_ended_msg))
-            playerState.control.retry()
+        val hasNext = videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
+        if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext) {
+            val countdown = rememberCountdown(initialTime = 3)
+            FloatingMessageIndicator(stringResource(R.string.auto_play_next, countdown))
         }
 
         if (playerState.isSeeking.value) {
@@ -504,9 +523,37 @@ private fun VideoStateMessage(playerState: VideoPlayerState, modifier: Modifier 
         }
 
         if (playerState.isLongPress.value) {
-            FastForwardIndicator(Modifier.align(Alignment.TopCenter))
+            FastForwardIndicator(
+                Modifier.align(
+                    Alignment.TopCenter
+                )
+            )
         }
+    }
+}
 
+@Composable
+fun RegisterPlaybackStateListener(
+    playerState: VideoPlayerState,
+    viewModel: VideoPlayViewModel,
+    isAutoContinuePlayEnabled: Boolean
+) {
+
+    LaunchedEffect(isAutoContinuePlayEnabled) {
+        launch {
+            snapshotFlow { playerState.isEnded.value }.collect { isEnded ->
+                if (isEnded && isAutoContinuePlayEnabled) {
+                    viewModel.onPlayerEnded(playerState.player.currentPosition)
+                }
+            }
+        }
+        launch {
+            snapshotFlow { playerState.isSeeking.value }.collect { isSeeking ->
+                if (isSeeking && isAutoContinuePlayEnabled) {
+                    viewModel.cancelAutoContinuePlay() // 拖动进度条时调用，取消自动连播
+                }
+            }
+        }
     }
 }
 
@@ -535,6 +582,57 @@ private fun FastForwardIndicator(modifier: Modifier) {
             )
         }
 
+    }
+}
+
+@Composable
+fun rememberCountdown(
+    initialTime: Int = 3,
+    onTick: (Int) -> Unit = {},
+    onTimeout: () -> Unit = {}
+): Int {
+    var remaining by remember { mutableIntStateOf(initialTime) }
+
+    LaunchedEffect(initialTime) {
+        remaining = initialTime
+        while (remaining > 0) {
+            delay(1000)
+            remaining--
+            onTick(remaining)
+        }
+        onTimeout()
+    }
+
+    return remaining
+}
+
+@Composable
+fun FloatingMessageIndicator(
+    text: String,
+    modifier: Modifier = Modifier,
+    minWidth: Dp = 120.dp,
+    minHeight: Dp = 48.dp,
+    backgroundColor: Color = Color.Black.copy(alpha = 0.7f),
+    shape: Shape = RoundedCornerShape(8.dp),
+    textStyle: TextStyle = MaterialTheme.typography.bodyMedium,
+    textColor: Color = Color.White,
+    contentAlignment: Alignment = Alignment.Center,
+    contentPaddingValues: PaddingValues = PaddingValues(16.dp)
+) {
+    Box(
+        modifier = modifier
+            .defaultMinSize(minWidth, minHeight)
+            .clip(shape)
+            .background(backgroundColor),
+        contentAlignment = contentAlignment
+    ) {
+        Text(
+            modifier = Modifier.padding(contentPaddingValues),
+            text = text,
+            style = textStyle,
+            color = textColor,
+            maxLines = 1,
+        )
     }
 }
 
@@ -705,7 +803,8 @@ private fun VideoSideSheet(
     var selectedResizeIndex by remember { mutableIntStateOf(0) }    // 适应
 
     if (playerState.isSpeedUiVisible.value) {
-        SpeedSideSheet(selectedSpeedIndex,
+        SpeedSideSheet(
+            selectedSpeedIndex,
             onSpeedClick = { index, (speedText, speed) ->
                 selectedSpeedIndex = index
                 playerState.setSpeedText(if (index == 3) "倍速" else speedText)
@@ -893,15 +992,16 @@ private fun SideSheet(
             }.invokeOnCompletion { onDismissRequest() }
         }
 
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { position ->
-                    if (position.x < fullWidth - sideSheetWidthDp.toPx()) {
-                        dismissRequestHandler()
-                    }
-                })
-            }) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { position ->
+                        if (position.x < fullWidth - sideSheetWidthDp.toPx()) {
+                            dismissRequestHandler()
+                        }
+                    })
+                }) {
             AnimatedVisibility(
                 visibleState = visibleState,
                 modifier = Modifier.align(Alignment.CenterEnd),

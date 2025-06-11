@@ -108,4 +108,7 @@
     <string name="action_share">分享</string>
     <string name="copy_crash_log">复制崩溃日志</string>
     <string name="crash_log_has_been_copied">崩溃日志已复制</string>
+
+    <string name="auto_continue_play">自动连播</string>
+    <string name="auto_play_next">%1$ds后自动播放下一集...</string>
 </resources>

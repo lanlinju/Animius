@@ -22,6 +22,8 @@ import com.sakura.anime.util.Resource
 import com.sakura.anime.util.SourceMode
 import com.sakura.anime.util.preferences
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,6 +58,10 @@ class VideoPlayViewModel @Inject constructor(
     // 当前集数的URL和历史记录ID
     private var currentEpisodeUrl: String = ""
     private var historyId: Long = -1L
+
+    // 自动连播相关
+    private var autoPlayJob: Job? = null
+    private var autoPlayTriggered = false
 
     init {
         // 从SavedStateHandle中获取播放模式和视频集数的URL
@@ -187,21 +193,43 @@ class VideoPlayViewModel @Inject constructor(
         }
     }
 
+    fun onPlayerEnded(currPlayPosition: Long) {
+        startAutoContinuePlay(currPlayPosition)
+    }
+
+    /**
+     * 播放器播放结束时触发，启动 3 秒延迟的自动连播
+     */
+    private fun startAutoContinuePlay(currPlayPosition: Long) {
+        cancelAutoContinuePlay()
+        autoPlayJob = viewModelScope.launch {
+            delay(3000)
+            nextEpisode(currPlayPosition)
+        }
+    }
+
+    fun cancelAutoContinuePlay() {
+        autoPlayJob?.cancel()
+        autoPlayJob = null
+    }
+
     /**
      * 切换到下一集
      * @param videoPosition 当前视频的播放位置
      */
-    fun nextEpisode(videoPosition: Long) {
-        _videoState.value.data?.let { video ->
-            val nextEpisodeIndex = video.currentEpisodeIndex + 1
-            if (nextEpisodeIndex < video.episodes.size) {
-                // 获取下一集视频
-                getVideo(
-                    video.episodes[nextEpisodeIndex].url,
-                    video.episodes[nextEpisodeIndex].name,
-                    nextEpisodeIndex,
-                    videoPosition
-                )
+    fun nextEpisode(currPlayPosition: Long, isDelayEnabled: Boolean = false) {
+        viewModelScope.launch {
+            _videoState.value.data?.let { video ->
+                val nextEpisodeIndex = video.currentEpisodeIndex + 1
+                if (nextEpisodeIndex < video.episodes.size) {
+                    // 获取下一集视频
+                    getVideo(
+                        video.episodes[nextEpisodeIndex].url,
+                        video.episodes[nextEpisodeIndex].name,
+                        nextEpisodeIndex,
+                        currPlayPosition
+                    )
+                }
             }
         }
     }

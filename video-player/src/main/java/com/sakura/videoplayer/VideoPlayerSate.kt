@@ -192,6 +192,10 @@ class VideoPlayerStateImpl(
         }
     }
 
+    override fun setLoading(loading: Boolean) {
+        isLoading.value = loading
+    }
+
     private var pollVideoPositionJob: Job? = null
     private var controlUiLastInteractionMs = 0L
 
@@ -405,6 +409,8 @@ interface VideoPlayerState {
     val isResizeUiVisible: State<Boolean>
     val isEpisodeUiVisible: State<Boolean>
     val control: VideoPlayerControl
+
+    fun setLoading(loading: Boolean)
 
     fun onChangeVolume(value: Float)
     fun onChangeBrightness(value: Float)

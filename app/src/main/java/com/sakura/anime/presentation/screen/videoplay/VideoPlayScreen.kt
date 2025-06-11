@@ -200,7 +200,13 @@ fun VideoPlayScreen(
                     modifier = Modifier
                         .defaultRemoteControlHandler(
                             playerState = playerState,
-                            onNextClick = { viewModel.nextEpisode(playerState.player.currentPosition) }
+                            onNextClick = {
+                                playerState.control.pause()
+                                playerState.setLoading(true)
+                                viewModel.cancelAutoContinuePlay()
+                                viewModel.playNextEpisode(playerState.player.currentPosition)
+                            },
+                            onCancelAutoContinuePlay = { viewModel.cancelAutoContinuePlay() }
                         )
                         .focusRequester(focusRequester)
                         .focusable()
@@ -211,7 +217,12 @@ fun VideoPlayScreen(
                         title = "${video.title}-${video.episodeName}",
                         enabledDanmaku = enabledDanmaku,
                         onBackClick = { handleBackPress(playerState, onBackClick, view, activity) },
-                        onNextClick = { viewModel.nextEpisode(playerState.player.currentPosition) },
+                        onNextClick = {
+                            playerState.control.pause()
+                            playerState.setLoading(true)
+                            viewModel.cancelAutoContinuePlay()
+                            viewModel.playNextEpisode(playerState.player.currentPosition)
+                        },
                         optionsContent = { OptionsContent(video) },
                         onDanmakuClick = { viewModel.setEnabledDanmaku(it) }
                     )
@@ -369,16 +380,19 @@ private fun DanmakuHost(
 private fun Modifier.defaultRemoteControlHandler(
     playerState: VideoPlayerState,
     onNextClick: () -> Unit = {},
+    onCancelAutoContinuePlay: () -> Unit = {},
 ) = onKeyEvent { keyEvent: KeyEvent ->
     if (keyEvent.type == KeyEventType.KeyDown)
         when (keyEvent.key) {
             Key.DirectionLeft -> {
+                onCancelAutoContinuePlay()
                 playerState.showControlUi()
                 playerState.control.rewind()
                 true
             }
 
             Key.DirectionRight -> {
+                onCancelAutoContinuePlay()
                 playerState.showControlUi()
                 playerState.control.forward()
                 true
@@ -499,7 +513,7 @@ private fun VideoStateMessage(
         contentAlignment = Alignment.Center
     ) {
         if (playerState.isLoading.value && !playerState.isError.value && !playerState.isSeeking.value) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            CircularProgressIndicator()
         }
 
         if (playerState.isError.value) {
@@ -510,8 +524,9 @@ private fun VideoStateMessage(
         }
 
         val hasNext = videoState.data?.let { it.currentEpisodeIndex + 1 < it.episodes.size } == true
-        if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext) {
-            val countdown = rememberCountdown(initialTime = 3)
+        if (playerState.isEnded.value && isAutoContinuePlayEnabled && hasNext && !playerState.isLoading.value) {
+            val countdown =
+                rememberCountdown(initialTime = 3, onFinished = { playerState.setLoading(true) })
             FloatingMessageIndicator(stringResource(R.string.auto_play_next, countdown))
         }
 
@@ -543,7 +558,7 @@ fun RegisterPlaybackStateListener(
         launch {
             snapshotFlow { playerState.isEnded.value }.collect { isEnded ->
                 if (isEnded && isAutoContinuePlayEnabled) {
-                    viewModel.onPlayerEnded(playerState.player.currentPosition)
+                    viewModel.startAutoContinuePlay(playerState.player.currentPosition)
                 }
             }
         }
@@ -589,7 +604,7 @@ private fun FastForwardIndicator(modifier: Modifier) {
 fun rememberCountdown(
     initialTime: Int = 3,
     onTick: (Int) -> Unit = {},
-    onTimeout: () -> Unit = {}
+    onFinished: () -> Unit = {},
 ): Int {
     var remaining by remember { mutableIntStateOf(initialTime) }
 
@@ -600,7 +615,7 @@ fun rememberCountdown(
             remaining--
             onTick(remaining)
         }
-        onTimeout()
+        onFinished()
     }
 
     return remaining
@@ -825,11 +840,14 @@ private fun VideoSideSheet(
     }
 
     if (playerState.isEpisodeUiVisible.value) {
-        var selectedEpisodeIndex by remember { mutableIntStateOf(video.currentEpisodeIndex) }
+        var selectedEpisodeIndex by remember(video.currentEpisodeIndex) { mutableIntStateOf(video.currentEpisodeIndex) }
         EpisodeSideSheet(
             episodes = video.episodes,
             selectedEpisodeIndex = selectedEpisodeIndex,
             onEpisodeClick = { index, episode ->
+                playerState.control.pause()
+                playerState.setLoading(true)
+                viewModel.cancelAutoContinuePlay()
                 selectedEpisodeIndex = index
                 viewModel.getVideo(
                     episode.url,

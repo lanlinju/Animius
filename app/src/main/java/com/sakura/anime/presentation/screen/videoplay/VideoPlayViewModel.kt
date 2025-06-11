@@ -60,8 +60,7 @@ class VideoPlayViewModel @Inject constructor(
     private var historyId: Long = -1L
 
     // 自动连播相关
-    private var autoPlayJob: Job? = null
-    private var autoPlayTriggered = false
+    private var autoContinuePlayJob: Job? = null
 
     init {
         // 从SavedStateHandle中获取播放模式和视频集数的URL
@@ -193,31 +192,27 @@ class VideoPlayViewModel @Inject constructor(
         }
     }
 
-    fun onPlayerEnded(currPlayPosition: Long) {
-        startAutoContinuePlay(currPlayPosition)
-    }
-
     /**
      * 播放器播放结束时触发，启动 3 秒延迟的自动连播
      */
-    private fun startAutoContinuePlay(currPlayPosition: Long) {
+    fun startAutoContinuePlay(currPlayPosition: Long) {
         cancelAutoContinuePlay()
-        autoPlayJob = viewModelScope.launch {
+        autoContinuePlayJob = viewModelScope.launch {
             delay(3000)
-            nextEpisode(currPlayPosition)
+            playNextEpisode(currPlayPosition)
         }
     }
 
     fun cancelAutoContinuePlay() {
-        autoPlayJob?.cancel()
-        autoPlayJob = null
+        autoContinuePlayJob?.cancel()
+        autoContinuePlayJob = null
     }
 
     /**
      * 切换到下一集
      * @param videoPosition 当前视频的播放位置
      */
-    fun nextEpisode(currPlayPosition: Long, isDelayEnabled: Boolean = false) {
+    fun playNextEpisode(currPlayPosition: Long) {
         viewModelScope.launch {
             _videoState.value.data?.let { video ->
                 val nextEpisodeIndex = video.currentEpisodeIndex + 1

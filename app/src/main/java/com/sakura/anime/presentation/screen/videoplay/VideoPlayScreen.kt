@@ -130,6 +130,7 @@ import com.sakura.videoplayer.ResizeMode
 import com.sakura.videoplayer.VideoPlayer
 import com.sakura.videoplayer.VideoPlayerControl
 import com.sakura.videoplayer.VideoPlayerState
+import com.sakura.videoplayer.icons.Forward85
 import com.sakura.videoplayer.prettyVideoTimestamp
 import com.sakura.videoplayer.rememberVideoPlayerState
 import kotlinx.coroutines.delay
@@ -223,7 +224,12 @@ fun VideoPlayScreen(
                             viewModel.cancelAutoContinuePlay()
                             viewModel.playNextEpisode(playerState.player.currentPosition)
                         },
-                        optionsContent = { OptionsContent(video) },
+                        optionsContent = {
+                            OptionsContent(
+                                video = video,
+                                onForwardClick = { playerState.control.skip(85000) }
+                            )
+                        },
                         onDanmakuClick = { viewModel.setEnabledDanmaku(it) }
                     )
                 }
@@ -426,29 +432,39 @@ private fun Modifier.defaultRemoteControlHandler(
 }
 
 @Composable
-private fun OptionsContent(video: Video) {
+private fun OptionsContent(video: Video, onForwardClick: () -> Unit = {}) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
+
+    Row {
+        IconButton(onClick = onForwardClick) {
             Icon(
-                imageVector = Icons.Rounded.MoreVert,
-                contentDescription = null
+                imageVector = Icons.Rounded.Forward85,
+                contentDescription = "Forward 85s"
             )
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(text = stringResource(id = R.string.external_play))
-                },
-                onClick = {
-                    expanded = false
-                    openExternalPlayer(video.url)
-                }
-            )
+        Box {
+            IconButton(onClick = { expanded = true }) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = null
+                )
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(text = stringResource(id = R.string.external_play))
+                    },
+                    onClick = {
+                        expanded = false
+                        openExternalPlayer(video.url)
+                    }
+                )
+            }
         }
     }
 }

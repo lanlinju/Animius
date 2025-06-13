@@ -171,6 +171,13 @@ class VideoPlayerStateImpl(
             player.seekBack()
         }
 
+        override fun skip(skipMs: Long) {
+            controlUiLastInteractionMs = 0
+            if (videoDurationMs.value == 0L) return
+            val positionMs = (player.currentPosition + skipMs).coerceIn(0, videoDurationMs.value)
+            player.seekTo(positionMs)
+        }
+
         override fun retry() {
             isError.value = false
             isLoading.value = true
@@ -447,6 +454,7 @@ interface VideoPlayerControl {
 
     fun forward()
     fun rewind()
+    fun skip(skipMs: Long)
 
     fun retry()
 

@@ -52,6 +52,7 @@ import com.sakura.anime.presentation.component.WarningMessage
 import com.sakura.anime.util.SourceMode
 import com.sakura.anime.util.isAndroidTV
 import com.sakura.anime.util.isWideScreen
+import com.sakura.anime.util.onDCenterKeyPress
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,6 +162,9 @@ fun SearchScreen(
 //                        .scale(if (isFocused && isAndroidTV) 1.1f else 1f)
                         .focusRequester(mediaFocusRequester) // 设置焦点请求者
                         .focusable()
+                        .onDCenterKeyPress {
+                            onNavigateToAnimeDetail(item.detailUrl, viewModel.currentSourceMode)
+                        }
                 )
 
                 LaunchedEffect(item.detailUrl) {

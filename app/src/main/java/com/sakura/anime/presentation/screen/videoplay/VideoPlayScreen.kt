@@ -122,6 +122,7 @@ import com.sakura.anime.util.KEY_DANMAKU_CONFIG_DATA
 import com.sakura.anime.util.isAndroidTV
 import com.sakura.anime.util.isTabletDevice
 import com.sakura.anime.util.isWideScreen
+import com.sakura.anime.util.onDCenterKeyPress
 import com.sakura.anime.util.openExternalPlayer
 import com.sakura.anime.util.preferences
 import com.sakura.anime.util.rememberPreference
@@ -937,6 +938,7 @@ private fun EpisodeSideSheet(
 ) {
     val context = LocalContext.current
     val isAndroidTV = remember { isAndroidTV(context) }
+
     SideSheet(onDismissRequest = onDismissRequest) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
@@ -951,6 +953,7 @@ private fun EpisodeSideSheet(
                 val focusRequester = remember { FocusRequester() }
                 var isFocused by remember { mutableStateOf(false) }
                 val selected = index == selectedEpisodeIndex
+
                 OutlinedButton(
                     onClick = { onEpisodeClick(index, episode) },
                     contentPadding = PaddingValues(8.dp),
@@ -968,6 +971,9 @@ private fun EpisodeSideSheet(
                         .scale(if (isFocused && isAndroidTV) 1.1f else 1f)
                         .focusRequester(focusRequester)
                         .focusable()
+                        .onDCenterKeyPress {
+                            onEpisodeClick(index, episode)
+                        }
                 ) {
                     Text(
                         text = episode.name,
@@ -977,13 +983,14 @@ private fun EpisodeSideSheet(
                     )
                 }
 
-                LaunchedEffect(selected) {
+                LaunchedEffect(Unit) {
                     if (selected && isAndroidTV) {
                         focusRequester.requestFocus()
                     }
                 }
             }
         }
+
     }
 }
 

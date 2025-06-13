@@ -866,12 +866,17 @@ private fun VideoSideSheet(
                 playerState.setLoading(true)
                 viewModel.cancelAutoContinuePlay()
                 selectedEpisodeIndex = index
+
                 viewModel.getVideo(
                     episode.url,
                     episode.name,
                     index,
                     playerState.player.currentPosition
                 )
+
+                if (isAndroidTV) {
+                    playerState.hideEpisodeUi()
+                }
             },
             onDismissRequest = { playerState.hideEpisodeUi() }
         )

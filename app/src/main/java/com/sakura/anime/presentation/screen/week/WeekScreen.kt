@@ -91,7 +91,6 @@ import com.sakura.anime.util.SourceHolder
 import com.sakura.anime.util.SourceHolder.DEFAULT_ANIME_SOURCE
 import com.sakura.anime.util.SourceMode
 import com.sakura.anime.util.TABS
-import com.sakura.anime.util.disableHorizontalPointerInputScroll
 import com.sakura.anime.util.isAndroidTV
 import com.sakura.anime.util.isWideScreen
 import com.sakura.anime.util.rememberPreference
@@ -315,14 +314,14 @@ fun WeekScreen(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .run {
-                        if (isAndroidTV) {
-                            disableHorizontalPointerInputScroll()
-                        } else this
-                    },
+                    .fillMaxSize(),
+//                    .run {
+//                        if (isAndroidTV) {
+//                            disableHorizontalPointerInputScroll()
+//                        } else this
+//                    },
                 beyondViewportPageCount = 1,
-                userScrollEnabled = !isAndroidTV
+//                userScrollEnabled = !isAndroidTV
             ) { page ->
                 StateHandler(
                     state = weekDataState,

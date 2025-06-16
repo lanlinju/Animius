@@ -14,7 +14,7 @@ import org.jsoup.select.Elements
 
 object NyafunSource : AnimeSource {
     // Release page: https://www.nyadm.link/
-    override val DEFAULT_DOMAIN = "https://www.nyadm.net/"
+    override val DEFAULT_DOMAIN = "https://www.nyadm.org/"
     override var baseUrl: String = getDefaultDomain()
 
     private val webViewUtil: WebViewUtil by lazy { WebViewUtil() }
@@ -28,8 +28,8 @@ object NyafunSource : AnimeSource {
         val document = Jsoup.parse(source)
 
         val homeBeanList = mutableListOf<HomeBean>()
-        document.select("div.box-width.wow").apply { removeAt(1) }.forEach { element ->
-            val title = element.select("h2").text()
+        document.select("div.box-width.wow").takeLast(2).forEach { element ->
+            val title = element.select("h4").text()
             val moreUrl = element.select("a").attr("href")
             val homeItemBeanList = getAnimeList(element.select("div.public-list-box"))
             homeBeanList.add(HomeBean(title = title, moreUrl = moreUrl, animes = homeItemBeanList))
@@ -75,7 +75,7 @@ object NyafunSource : AnimeSource {
         val episodes = getAnimeEpisodes(document, action = { episodeName = it })*/
         val videoUrl = getVideoUrl("$baseUrl/$episodeUrl")
 
-        val headers = mapOf("Referer" to "https://play.nyafun.net/")
+        val headers = mapOf("Referer" to "https://play.nyadm.org/")
         return VideoBean(videoUrl, headers)
     }
 
@@ -83,6 +83,7 @@ object NyafunSource : AnimeSource {
         return webViewUtil.interceptRequest(
             url = url,
             regex = ".*\\.(mp4|mkv|m3u8).*\\?verify=.*",
+            userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"
         )
     }
 

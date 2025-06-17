@@ -45,10 +45,11 @@ class WebViewUtil {
         regex: String = ".mp4|.m3u8",
         predicate: suspend (requestUrl: String) -> Boolean = { false },
         filterRequestUrl: Array<String> = arrayOf(),
-        timeoutMs: Long = 10_000L
+        timeoutMs: Long = 10_000L,
+        userAgent: String? = null
     ): String = withContext(Dispatchers.Main) {
 
-        createWebView()
+        createWebView(userAgent)
 
         var hasResume = false
 
@@ -137,10 +138,13 @@ class WebViewUtil {
         }
     }
 
-    private fun createWebView() {
+    private fun createWebView(userAgent: String? = null) {
         destroyWebView()
         webView = WebView(AnimeApplication.getInstance()).apply {
             settings.javaScriptEnabled = true
+            if (userAgent != null) {
+                settings.userAgentString = userAgent
+            }
         }
     }
 

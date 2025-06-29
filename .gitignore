@@ -10,3 +10,4 @@
 local.properties
 release/
 /.kotlin
+debug/

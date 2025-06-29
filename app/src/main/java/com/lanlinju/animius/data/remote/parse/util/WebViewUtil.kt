@@ -68,7 +68,7 @@ class WebViewUtil {
                     requestUrl.log(LOG_TAG, "interceptRequest")
                     launch(Dispatchers.Default) {
                         if (requestUrl.contains(regex.toRegex()) || predicate(requestUrl)) {
-                            requestUrl.log(LOG_TAG, "interceptRequest: regex resume")
+                            requestUrl.log(LOG_TAG, "Regex match succeeded")
                             hasResume = true
                             continuation.resume(requestUrl)
                         }

@@ -118,7 +118,7 @@ class XifanSource : AnimeSource {
     private suspend fun getVideoUrl(url: String): String {
         return webViewUtil.interceptRequest(
             url = url,
-            regex = ".*download\\?fid=|.*\\.mp4\\?|.*\\.m3u8|^https://play.xfvod.pro/.*/\\d+\\.mp4|^https://apn.moedot.net/.*\\.mp4",
+            regex = ".*download\\?fid=|.*\\.mp4\\?|.*\\.m3u8|^https://play.xfvod.pro/.*\\.mp4|^https://apn.moedot.net/.*\\.mp4",
             timeoutMs = 20_000,
             userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         )

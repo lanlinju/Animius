@@ -58,7 +58,7 @@ object NyafunSource : AnimeSource {
         document: Document,
         action: (String) -> Unit = {}
     ): List<EpisodeBean> {
-        return document.select("div.anthology-list.top20.select-a")
+        return document.select("div.anthology-list.top20")
             .select("li").map {
                 if (it.select("em").size > 0) {
                     action(it.text())

@@ -81,9 +81,9 @@ enum class SourceMode {
     Girigiri,
     Agedm,
     Xifan,
+    Nyafun,
     Cycanime,
     Anfuns,
     Gogoanime,
-    Yhdm,
-    Nyafun
+    Yhdm
 }

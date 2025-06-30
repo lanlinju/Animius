@@ -91,9 +91,9 @@ object NyafunSource : AnimeSource {
         val source = DownloadManager.getHtml("$baseUrl/search/wd/$query/page/$page.html")
         val document = Jsoup.parse(source)
         val animeList = mutableListOf<AnimeBean>()
-        document.select("div.public-list-box").forEach { el ->
-            val title = el.select("div.thumb-txt > a").text()
-            val url = el.select("div.thumb-txt > a").attr("href")
+        document.select("div.vod-detail").forEach { el ->
+            val title = el.select("div.detail-info > a").text()
+            val url = el.select("div.detail-info > a").attr("href")
             val imgUrl = el.select("img").attr("data-src")
             animeList.add(AnimeBean(title = title, img = imgUrl, url = url))
         }

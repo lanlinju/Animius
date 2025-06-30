@@ -75,7 +75,7 @@ class VideoPlayerStateImpl(
     override val isLoading = mutableStateOf(true)
     override val isEnded = mutableStateOf(false)
     override val isError = mutableStateOf(false)
-    override val playerState = mutableStateOf(player.playbackState)
+    override val playbackState = mutableStateOf(player.playbackState)
 
     override val isSeeking = mutableStateOf(false)
     override val isLongPress = mutableStateOf(false)
@@ -295,7 +295,7 @@ class VideoPlayerStateImpl(
 
     override fun onPlaybackStateChanged(playbackState: Int) {
         if (playbackState == Player.STATE_READY) videoDurationMs.value = player.duration
-        this.playerState.value = playbackState
+        this.playbackState.value = playbackState
         when (playbackState) {
             Player.STATE_IDLE -> Unit
             Player.STATE_BUFFERING -> isLoading.value = true
@@ -413,7 +413,7 @@ interface VideoPlayerState {
     val isLoading: State<Boolean>
     val isEnded: State<Boolean>
     val isError: State<Boolean>
-    val playerState: State<Int>
+    val playbackState: State<Int>
 
     val isSeeking: State<Boolean>
     val isLongPress: State<Boolean>

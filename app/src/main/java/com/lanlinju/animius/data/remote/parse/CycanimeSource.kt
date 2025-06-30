@@ -30,9 +30,7 @@ object CycanimeSource : AnimeSource {
         val document = Jsoup.parse(source)
 
         val homeBeanList = mutableListOf<HomeBean>()
-        document.select("div.box-width.wow")
-            .apply { repeat(2) { removeAt(0) } }
-            .forEach { element ->
+        document.select("div.box-width.wow").takeLast(2).forEach { element ->
                 val title = element.select("h4").text()
                 val moreUrl = element.select("a.button").attr("href")
                 val homeItemBeanList = getAnimeList(element.select("div.public-list-box"))

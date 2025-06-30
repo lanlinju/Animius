@@ -60,6 +60,7 @@ class DanmakuHostState(
     internal var elapsedFrameTimeNanos: Long = 0L
     internal val isDebug by mutableStateOf(config.isDebug)
     internal var paused by mutableStateOf(false)
+    internal var speedMultiplier = 1f
 
     internal val trackWidth by derivedStateOf { hostWidth }
     internal val trackHeight by lazy {
@@ -144,9 +145,9 @@ class DanmakuHostState(
 
                 // 更新浮动弹幕的位置
                 for (danmaku in presentFloatingDanmaku) {
-                    val time = (elapsedFrameTimeNanos - danmaku.placeTimeNanos) / 1_000_000_000f
-                    val x = time * danmaku.speedPxPerSecond // 已行驶的距离
-                    danmaku.updatePosX(danmaku.placePosition - x)
+                    val time = delta / 1_000_000_000f
+                    danmaku.distanceX += time * danmaku.speedPxPerSecond * speedMultiplier // 累计行驶的距离
+                    danmaku.updatePosX(danmaku.placePosition - danmaku.distanceX)
                 }
             }
         }
@@ -305,6 +306,15 @@ class DanmakuHostState(
 
     fun pause() {
         paused = true
+    }
+
+    /**
+     * 设置弹幕的倍速
+     * speedMultiplier默认为1
+     */
+    fun speed(speed: Float) {
+        require(speed > 0f) { "Speed must be greater than 0." }
+        speedMultiplier = speed
     }
 }
 

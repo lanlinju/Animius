@@ -103,7 +103,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
@@ -345,7 +344,8 @@ private fun DanmakuHost(
         DanmakuHost(state = danmakuHostState)
     }
 
-    LaunchedEffect(playerState.isPlaying.value) {
+    LaunchedEffect(playerState.isPlaying.value, playerState.speed.value) {
+        danmakuHostState.speed(playerState.speed.value)
         if (playerState.isPlaying.value) {
             danmakuHostState.play()
         } else {

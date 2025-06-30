@@ -148,14 +148,6 @@ internal class FloatingDanmaku<T : SizeSpecifiedDanmaku>(
     var placePosition: Float = trackWidth.toFloat()
 
     /**
-     * 弹幕在浮动轨道已滚动的距离, 是正数. 单位 px
-     *
-     * 例如, 如果弹幕现在在左侧刚被放置, 则等于 `0`.
-     * 如果左边已滑到轨道最左侧, 则等于轨道长度.
-     */
-    val distanceX: Float get() = placePosition - screenPosX
-
-    /**
      * 弹幕在屏幕上的 Y 坐标位置, 由轨道高度和轨道索引计算得出.
      */
     val screenPosY = trackHeight.toFloat() * trackIndex
@@ -165,6 +157,14 @@ internal class FloatingDanmaku<T : SizeSpecifiedDanmaku>(
      * 使用 `mutableFloatStateOf` 以确保该值是可变且可组合的状态.
      */
     var screenPosX by mutableFloatStateOf(placePosition)
+
+    /**
+     * 弹幕在浮动轨道已滚动的距离, 是正数. 单位 px
+     *
+     * 例如, 如果弹幕现在在左侧刚被放置, 则等于 `0`.
+     * 如果左边已滑到轨道最左侧, 则等于轨道长度.
+     */
+    var distanceX: Float = placePosition - screenPosX
 
     /**
      * 弹幕的速度, 以像素每秒为单位.

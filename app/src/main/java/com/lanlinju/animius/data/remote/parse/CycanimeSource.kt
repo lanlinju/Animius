@@ -14,7 +14,7 @@ import org.jsoup.select.Elements
 
 object CycanimeSource : AnimeSource {
     // Release page: https://www.cycity.pro/
-    override val DEFAULT_DOMAIN: String = "https://www.cycani.org/"
+    override val DEFAULT_DOMAIN: String = "https://www.ciyuancheng.net/"
     override var baseUrl: String = getDefaultDomain()
 
     private val webViewUtil: WebViewUtil by lazy { WebViewUtil() }

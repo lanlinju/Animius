@@ -68,6 +68,7 @@ class VideoPlayerStateImpl(
     override val videoResizeMode = mutableStateOf(ResizeMode.Fit)
     override val videoPositionMs = mutableStateOf(0L)
     override val videoDurationMs = mutableStateOf(0L)
+    override val speed = mutableStateOf(1f)
 
     override val isFullscreen = mutableStateOf(true)
     override val isPlaying = mutableStateOf(player.isPlaying)
@@ -198,6 +199,7 @@ class VideoPlayerStateImpl(
         }
 
         override fun setPlaybackSpeed(speed: Float) {
+            this@VideoPlayerStateImpl.speed.value = speed
             player.setPlaybackSpeed(speed)
         }
     }
@@ -404,6 +406,7 @@ interface VideoPlayerState {
     val videoResizeMode: State<ResizeMode>
     val videoPositionMs: State<Long>    /*当控制组件显示时才会更新这个值，获取视频当前进度用player.currentPosition*/
     val videoDurationMs: State<Long>    /*视频时长*/
+    val speed: State<Float>
 
     val isFullscreen: State<Boolean>
     val isPlaying: State<Boolean>

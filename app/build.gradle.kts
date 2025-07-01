@@ -15,8 +15,8 @@ android {
         applicationId = "com.sakura.anime"
         minSdk = 21
         targetSdk = 35
-        versionCode = 26
-        versionName = "1.2.5"
+        versionCode = 27
+        versionName = "1.2.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -31,9 +31,6 @@ android {
         val devEnv = System.getenv("DEV") ?: "false"
         buildConfigField("Boolean", "DEV", devEnv)
 
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-        }
     }
 
     signingConfigs {
@@ -79,6 +76,10 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

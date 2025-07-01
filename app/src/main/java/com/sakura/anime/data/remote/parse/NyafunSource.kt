@@ -13,7 +13,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
 
 object NyafunSource : AnimeSource {
-    override val DEFAULT_DOMAIN = "https://www.nyacg.net"
+    override val DEFAULT_DOMAIN = "https://www.nyadm.org/"
     override var baseUrl: String = getDefaultDomain()
 
     private val webViewUtil: WebViewUtil by lazy { WebViewUtil() }
@@ -27,8 +27,8 @@ object NyafunSource : AnimeSource {
         val document = Jsoup.parse(source)
 
         val homeBeanList = mutableListOf<HomeBean>()
-        document.select("div.box-width.wow").apply { removeAt(1) }.forEach { element ->
-            val title = element.select("h2").text()
+        document.select("div.box-width.wow").takeLast(2).forEach { element ->
+            val title = element.select("h4").text()
             val moreUrl = element.select("a").attr("href")
             val homeItemBeanList = getAnimeList(element.select("div.public-list-box"))
             homeBeanList.add(HomeBean(title = title, moreUrl = moreUrl, animes = homeItemBeanList))
@@ -57,7 +57,7 @@ object NyafunSource : AnimeSource {
         document: Document,
         action: (String) -> Unit = {}
     ): List<EpisodeBean> {
-        return document.select("div.anthology-list.top20.select-a")
+        return document.select("div.anthology-list.top20")
             .select("li").map {
                 if (it.select("em").size > 0) {
                     action(it.text())
@@ -74,7 +74,7 @@ object NyafunSource : AnimeSource {
         var episodeName = ""
         val episodes = getAnimeEpisodes(document, action = { episodeName = it })
 
-        val headers = mapOf("Referer" to "https://play.nyafun.net/")
+        val headers = mapOf("Referer" to baseUrl)
         return VideoBean(title, videoUrl, episodeName, episodes, headers)
     }
 
@@ -82,6 +82,7 @@ object NyafunSource : AnimeSource {
         return webViewUtil.interceptRequest(
             url = url,
             regex = ".*\\.(mp4|mkv|m3u8).*\\?verify=.*",
+            userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"
         )
     }
 
@@ -89,9 +90,9 @@ object NyafunSource : AnimeSource {
         val source = DownloadManager.getHtml("$baseUrl/search/wd/$query/page/$page.html")
         val document = Jsoup.parse(source)
         val animeList = mutableListOf<AnimeBean>()
-        document.select("div.public-list-box").forEach { el ->
-            val title = el.select("div.thumb-txt > a").text()
-            val url = el.select("div.thumb-txt > a").attr("href")
+        document.select("div.vod-detail").forEach { el ->
+            val title = el.select("div.detail-info > a").text()
+            val url = el.select("div.detail-info > a").attr("href")
             val imgUrl = el.select("img").attr("data-src")
             animeList.add(AnimeBean(title = title, img = imgUrl, url = url))
         }

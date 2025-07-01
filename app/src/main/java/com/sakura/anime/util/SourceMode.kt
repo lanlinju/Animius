@@ -6,8 +6,8 @@ enum class SourceMode {
     Girigiri,
     Agedm,
     Cycanime,
-    Anfuns,
     Nyafun,
-    Yhdm
+    Yhdm,
+    Anfuns
 }
 

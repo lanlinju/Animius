@@ -1,8 +1,6 @@
 package com.lanlinju.animius.data.remote.parse.util
 
 import android.annotation.SuppressLint
-import android.net.http.SslError
-import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -13,7 +11,6 @@ import com.lanlinju.animius.util.log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.ByteArrayInputStream
@@ -75,6 +72,7 @@ class WebViewUtil {
         }
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     private fun createWebView(userAgent: String? = null) {
         destroyWebView()
         webView = WebView(AnimeApplication.getInstance()).apply {

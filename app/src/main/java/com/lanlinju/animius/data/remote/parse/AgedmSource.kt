@@ -1,6 +1,5 @@
 package com.lanlinju.animius.data.remote.parse
 
-import android.annotation.SuppressLint
 import com.lanlinju.animius.data.remote.dto.AnimeBean
 import com.lanlinju.animius.data.remote.dto.AnimeDetailBean
 import com.lanlinju.animius.data.remote.dto.EpisodeBean
@@ -74,7 +73,7 @@ object AgedmSource : AnimeSource {
     }
 
     override suspend fun getAnimeDetail(detailUrl: String): AnimeDetailBean {
-        val source = DownloadManager.getHtml(detailUrl)
+        val source = DownloadManager.getHtml(detailUrl.toHttps())
         val document = Jsoup.parse(source)
         val videoDetailRight = document.select("div.video_detail_right")
         val title = videoDetailRight.select("h2").text()
@@ -95,7 +94,7 @@ object AgedmSource : AnimeSource {
     }
 
     override suspend fun getVideoData(episodeUrl: String): VideoBean {
-        val source = DownloadManager.getHtml(episodeUrl)
+        val source = DownloadManager.getHtml(episodeUrl.toHttps())
         val document = Jsoup.parse(source)
         /*val elements = document.select("div.cata_video_item")
         val title = elements.select("h5").text()
@@ -143,5 +142,7 @@ object AgedmSource : AnimeSource {
             regex = ".mp4|.m3u8|video|playurl|hsl|obj|bili",
         )
     }
+
+    private fun String.toHttps(): String = replace(Regex("^http:"), "https:")
 }
 

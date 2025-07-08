@@ -11,12 +11,12 @@ plugins {
 
 android {
     namespace = "com.lanlinju.animius"
-    compileSdk = 35
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.lanlinju.animius"
-        minSdk = 26
-        targetSdk = 35
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        targetSdk = compileSdk
         versionCode = 34
         versionName = "1.3.3"
 

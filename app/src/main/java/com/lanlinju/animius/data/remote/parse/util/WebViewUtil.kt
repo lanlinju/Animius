@@ -11,21 +11,19 @@ import androidx.annotation.CallSuper
 import com.lanlinju.animius.application.AnimeApplication
 import com.lanlinju.animius.util.log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.ByteArrayInputStream
 import java.net.SocketTimeoutException
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import java.util.concurrent.TimeoutException
+
+private const val LOG_TAG = "WebViewUtil"
 
 @SuppressLint("StaticFieldLeak", "SetJavaScriptEnabled")
 class WebViewUtil {
-    companion object {
-        private val LOG_TAG = "WebViewUtil"
-    }
 
     private var webView: WebView? = null
 
@@ -46,95 +44,43 @@ class WebViewUtil {
         predicate: suspend (requestUrl: String) -> Boolean = { false },
         filterRequestUrl: Array<String> = arrayOf(),
         timeoutMs: Long = 10_000L,
-        userAgent: String? = null
+        userAgent: String? = null,
     ): String = withContext(Dispatchers.Main) {
 
         createWebView(userAgent)
 
-        var hasResume = false
+        var matchedUrl: String? = null
 
-        suspendCancellableCoroutine { continuation ->
+        webView?.webViewClient = object : BlockedResWebViewClient() {
+            override fun onLoadResource(view: WebView?, requestUrl: String) {
 
-            continuation.invokeOnCancellation { e ->
-                "invokeOnCancellation: ${e?.message}".log(LOG_TAG)
-                destroyWebView()
-            }
-
-            webView?.webViewClient = object : BlockedResWebViewClient() {
-                override fun onLoadResource(view: WebView?, requestUrl: String) {
-
-                    if (hasResume || requestUrl.containStrs(*filterRequestUrl)) return
-
-                    requestUrl.log(LOG_TAG, "interceptRequest")
-                    launch(Dispatchers.Default) {
-                        if (requestUrl.contains(regex.toRegex()) || predicate(requestUrl)) {
-                            requestUrl.log(LOG_TAG, "Regex match succeeded")
-                            hasResume = true
-                            continuation.resume(requestUrl)
-                        }
-                    }
-                }
-            }
-
-            webView?.loadUrl(url) // 加载视频播放所在的Web网页
-
-            launch(Dispatchers.Main) {
-                var elapsedTime = 0
-                while (elapsedTime < timeoutMs && !hasResume && isActive) {
-                    delay(200)
-                    elapsedTime += 200
-                    //elapsedTime.log(LOG_TAG, "elapsed")
+                // 过滤不需要的请求
+                if (filterRequestUrl.any { requestUrl.contains(it) }) {
+                    return
                 }
 
-                destroyWebView()
-
-                if (!hasResume) {
-                    "resumeWithException".log(LOG_TAG)
-                    continuation.resumeWithException(SocketTimeoutException("webView connection timeout exception"))
+                requestUrl.log(LOG_TAG, "InterceptRequest")
+                if (requestUrl.contains(regex.toRegex()) || runBlocking { predicate(requestUrl) }) {
+                    matchedUrl = requestUrl
+                    requestUrl.log(LOG_TAG, "Regex match succeeded")
                 }
             }
         }
-    }
 
-    abstract class BlockedResWebViewClient(
-        private val blockRes: Array<String> = arrayOf(
-            ".css",
-            ".mp4", ".ts",
-            ".mp3", ".m4a",
-            ".gif", ",jpg", ".png", ".webp"
-        )
-    ) : WebViewClient() {
+        webView?.loadUrl(url) // 加载视频播放所在的Web网页
 
-        private val blockWebResourceRequest =
-            WebResourceResponse("text/html", "utf-8", ByteArrayInputStream("".toByteArray()))
-
-        @SuppressLint("WebViewClientOnReceivedSslError")
-        override fun onReceivedSslError(
-            view: WebView?,
-            handler: SslErrorHandler?,
-            error: SslError?
-        ) {
-            handler?.proceed()
-        }
-
-        // Reference code: https://github.com/RyensX/MediaBox/blob/1aefca13656eada4da2ff515cc9f893f407c53e0/app/src/main/java/com/su/mediabox/plugin/WebUtilImpl.kt#L138
-        /**
-         * 拦截无关资源文件
-         *
-         * 注意，该方法运行在线程池内
-         */
-        @CallSuper
-        override fun shouldInterceptRequest(
-            view: WebView,
-            request: WebResourceRequest?
-        ) = run {
-            val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-            if (blockRes.any { url.contains(it) }) {
-                "filtered load: $url".log(LOG_TAG)
-                view.post { view.webViewClient.onLoadResource(view, url) }
-                blockWebResourceRequest
+        // 等待匹配结果或超时
+        try {
+            withTimeout(timeoutMs) {
+                while (matchedUrl == null) {
+                    delay(100)
+                }
             }
-            super.shouldInterceptRequest(view, request)
+            matchedUrl ?: throw TimeoutException("No matching URL found")
+        } catch (_: TimeoutCancellationException) {
+            throw TimeoutException("Web connection timeout exception")
+        } finally {
+            destroyWebView()
         }
     }
 
@@ -151,11 +97,10 @@ class WebViewUtil {
     private fun destroyWebView() {
         webView?.destroy()
         webView = null
-        "destroyWebView".log(LOG_TAG)
+        "DestroyWebView".log(LOG_TAG)
     }
 
     fun clearWeb() {
-//        createWebView()
         webView?.clear()
         destroyWebView()
     }
@@ -169,5 +114,46 @@ class WebViewUtil {
         clearFormData()
         clearMatches()
     }
+}
 
+abstract class BlockedResWebViewClient(
+    private val blockRes: Array<String> = arrayOf(
+        ".css", ".ts",
+        ".mp3", ".m4a",
+        ".gif", ".jpg", ".png", ".webp"
+    )
+) : WebViewClient() {
+
+    private val blockWebResourceRequest =
+        WebResourceResponse("text/html", "utf-8", ByteArrayInputStream("".toByteArray()))
+
+    @SuppressLint("WebViewClientOnReceivedSslError")
+    override fun onReceivedSslError(
+        view: WebView?,
+        handler: SslErrorHandler?,
+        error: SslError?
+    ) {
+        handler?.proceed()
+    }
+
+    // Reference code: https://github.com/RyensX/MediaBox/blob/1aefca13656eada4da2ff515cc9f893f407c53e0/app/src/main/java/com/su/mediabox/plugin/WebUtilImpl.kt#L138
+    /**
+     * 拦截无关资源文件
+     *
+     * 注意，该方法运行在线程池内
+     */
+    @CallSuper
+    override fun shouldInterceptRequest(
+        view: WebView,
+        request: WebResourceRequest?
+    ) = run {
+        val url = request?.url?.toString() ?: return null
+        if (blockRes.any { url.contains(it) }) {
+            url.log(LOG_TAG,"BlockedRes")
+            view.post { view.webViewClient.onLoadResource(view, url) }
+            blockWebResourceRequest
+        } else {
+            null
+        }
+    }
 }

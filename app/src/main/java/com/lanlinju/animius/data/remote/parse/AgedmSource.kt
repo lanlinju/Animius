@@ -9,17 +9,10 @@ import com.lanlinju.animius.data.remote.dto.VideoBean
 import com.lanlinju.animius.data.remote.parse.util.WebViewUtil
 import com.lanlinju.animius.util.DownloadManager
 import com.lanlinju.animius.util.getDefaultDomain
-import com.lanlinju.animius.util.log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.ResponseBody
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
-import retrofit2.Response
-import java.io.Closeable
 
-@SuppressLint("StaticFieldLeak", "SetJavaScriptEnabled")
 object AgedmSource : AnimeSource {
 
     private const val LOG_TAG = "AgedmSource"
@@ -29,11 +22,6 @@ object AgedmSource : AnimeSource {
     override var baseUrl: String = getDefaultDomain()
 
     private val webViewUtil: WebViewUtil by lazy { WebViewUtil() }
-
-    private val filterReqUrl: Array<String> = arrayOf(
-        ".css", ".js", ".jpeg", ".svg", ".ico", ".ts",
-        ".gif", ".jpg", ".png", ".webp", ".wasm", "age", ".php"
-    )
 
     override fun onExit() {
         webViewUtil.clearWeb()
@@ -150,51 +138,10 @@ object AgedmSource : AnimeSource {
 
         val videoUrl = document.select("#iframeForVideo").attr("src")
 
-        // 用于判断url的返回类型是否是 video/mp4
-        val predicate: suspend (requestUrl: String) -> Boolean = { requestUrl ->
-            withContext(Dispatchers.IO) {
-                var response: Response<ResponseBody>? = null
-                try {
-                    "predicate $requestUrl".log(LOG_TAG)
-                    response = DownloadManager.request(requestUrl)
-                    response.isSuccessful && response.isVideoType()
-                } catch (_: Exception) {
-                    false
-                } finally {
-                    response?.closeQuietly()
-                }
-            }
-        }
-
         return webViewUtil.interceptRequest(
             url = videoUrl,
             regex = ".mp4|.m3u8|video|playurl|hsl|obj|bili",
-            predicate = predicate,
-            filterRequestUrl = filterReqUrl
         )
-    }
-
-    private fun Response<*>.header(key: String): String {
-        val header = headers()[key]
-        return header ?: ""
-    }
-
-    private fun Response<*>.isVideoType(): Boolean {
-        return header("Content-Type") == "video/mp4"
-    }
-
-    private fun Closeable.closeQuietly() {
-        try {
-            close()
-        } catch (rethrown: RuntimeException) {
-            throw rethrown
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun Response<ResponseBody>.closeQuietly() {
-        body()?.closeQuietly()
-        errorBody()?.closeQuietly()
     }
 }
 

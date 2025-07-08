@@ -22,7 +22,6 @@ import java.util.concurrent.TimeoutException
 
 private const val LOG_TAG = "WebViewUtil"
 
-@SuppressLint("StaticFieldLeak", "SetJavaScriptEnabled")
 class WebViewUtil {
 
     private var webView: WebView? = null
@@ -32,8 +31,6 @@ class WebViewUtil {
      *
      * @param url 要访问的视频所在网页的url
      * @param regex 通过regex匹配拦截对应视频链接
-     * @param predicate 自定义额外的判断条件,当regex不能满足匹配要求时会执行
-     * @param filterRequestUrl 过滤不需要匹配的请求url
      * @param timeoutMs 请求超时的时间,单位毫秒
      *
      * @return 返回匹配到的视频链接url，匹配不到结果会报一个[SocketTimeoutException]超时异常
@@ -41,26 +38,20 @@ class WebViewUtil {
     suspend fun interceptRequest(
         url: String,
         regex: String = ".mp4|.m3u8",
-        predicate: suspend (requestUrl: String) -> Boolean = { false },
-        filterRequestUrl: Array<String> = arrayOf(),
         timeoutMs: Long = 10_000L,
         userAgent: String? = null,
     ): String = withContext(Dispatchers.Main) {
-
         createWebView(userAgent)
 
+        val regexPattern = regex.toRegex()
         var matchedUrl: String? = null
 
         webView?.webViewClient = object : BlockedResWebViewClient() {
             override fun onLoadResource(view: WebView?, requestUrl: String) {
 
-                // 过滤不需要的请求
-                if (filterRequestUrl.any { requestUrl.contains(it) }) {
-                    return
-                }
-
                 requestUrl.log(LOG_TAG, "InterceptRequest")
-                if (requestUrl.contains(regex.toRegex()) || runBlocking { predicate(requestUrl) }) {
+
+                if (requestUrl.contains(regexPattern)) {
                     matchedUrl = requestUrl
                     requestUrl.log(LOG_TAG, "Regex match succeeded")
                 }
@@ -127,15 +118,6 @@ abstract class BlockedResWebViewClient(
     private val blockWebResourceRequest =
         WebResourceResponse("text/html", "utf-8", ByteArrayInputStream("".toByteArray()))
 
-    @SuppressLint("WebViewClientOnReceivedSslError")
-    override fun onReceivedSslError(
-        view: WebView?,
-        handler: SslErrorHandler?,
-        error: SslError?
-    ) {
-        handler?.proceed()
-    }
-
     // Reference code: https://github.com/RyensX/MediaBox/blob/1aefca13656eada4da2ff515cc9f893f407c53e0/app/src/main/java/com/su/mediabox/plugin/WebUtilImpl.kt#L138
     /**
      * 拦截无关资源文件
@@ -149,7 +131,7 @@ abstract class BlockedResWebViewClient(
     ) = run {
         val url = request?.url?.toString() ?: return null
         if (blockRes.any { url.contains(it) }) {
-            url.log(LOG_TAG,"BlockedRes")
+            url.log(LOG_TAG, "BlockedRes")
             view.post { view.webViewClient.onLoadResource(view, url) }
             blockWebResourceRequest
         } else {

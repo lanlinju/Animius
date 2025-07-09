@@ -8,6 +8,7 @@ import com.lanlinju.animius.data.remote.parse.CycanimeSource
 import com.lanlinju.animius.data.remote.parse.GirigiriSource
 import com.lanlinju.animius.data.remote.parse.GogoanimeSource
 import com.lanlinju.animius.data.remote.parse.MxdmSource
+import com.lanlinju.animius.data.remote.parse.NtdmSource
 import com.lanlinju.animius.data.remote.parse.NyafunSource
 import com.lanlinju.animius.data.remote.parse.SilisiliSource
 import com.lanlinju.animius.data.remote.parse.XifanSource
@@ -71,6 +72,7 @@ object SourceHolder {
             SourceMode.Cycanime -> CycanimeSource
             SourceMode.Gogoanime -> GogoanimeSource
             SourceMode.Xifan -> XifanSource()
+            SourceMode.Ntdm -> NtdmSource()
         }
     }
 }
@@ -82,6 +84,7 @@ enum class SourceMode {
     Agedm,
     Xifan,
     Nyafun,
+    Ntdm,
     Cycanime,
     Anfuns,
     Gogoanime,

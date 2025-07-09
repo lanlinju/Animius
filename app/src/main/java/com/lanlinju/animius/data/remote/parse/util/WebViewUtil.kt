@@ -7,6 +7,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.CallSuper
 import com.lanlinju.animius.application.AnimeApplication
+import com.lanlinju.animius.util.DefaultUserAgent
 import com.lanlinju.animius.util.log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -36,7 +37,7 @@ class WebViewUtil {
         url: String,
         regex: String = ".mp4|.m3u8",
         timeoutMs: Long = 10_000L,
-        userAgent: String? = null,
+        userAgent: String = DefaultUserAgent,
     ): String = withContext(Dispatchers.Main) {
         createWebView(userAgent)
 
@@ -73,13 +74,11 @@ class WebViewUtil {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun createWebView(userAgent: String? = null) {
+    private fun createWebView(userAgent: String) {
         destroyWebView()
         webView = WebView(AnimeApplication.getInstance()).apply {
             settings.javaScriptEnabled = true
-            if (userAgent != null) {
-                settings.userAgentString = userAgent
-            }
+            settings.userAgentString = userAgent
         }
     }
 
@@ -93,9 +92,6 @@ class WebViewUtil {
         webView?.clear()
         destroyWebView()
     }
-
-    private fun CharSequence.containStrs(vararg strs: CharSequence) =
-        strs.find { contains(it) } != null
 
     private fun WebView.clear() {
         clearCache(true)

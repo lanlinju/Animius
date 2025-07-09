@@ -3,7 +3,7 @@ package com.lanlinju.animius.util
 const val CROSSFADE_DURATION = 500
 const val VIDEO_ASPECT_RATIO = 1.778f
 
-const val LOW_CONTENT_ALPHA= 0.35f
+const val LOW_CONTENT_ALPHA = 0.35f
 
 val TABS = listOf("一", "二", "三", "四", "五", "六", "日")
 
@@ -23,3 +23,6 @@ const val DOWNLOAD_DETAIL_TABLE = "download_detail_table"
 const val SEARCH_PAGE_SIZE = 10
 
 const val KEY_DOWNLOAD_UPDATE_URL = "downloadUpdateUrl"
+
+const val DefaultUserAgent =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"

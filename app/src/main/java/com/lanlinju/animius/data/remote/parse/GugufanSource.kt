@@ -36,18 +36,13 @@ class GugufanSource : AnimeSource {
 
         val homeBeanList = mutableListOf<HomeBean>()
         document.select("div.box-width.wow")
-            .apply { removeAt(size - 1) }
-            .forEach { element ->
+            .apply {
+                removeAt(0)
+                removeAt(size - 1)
+            }.forEach { element ->
                 val title = element.select("h4").text()
-                val moreUrl = element.select("a").attr("href")
                 val homeItemBeanList = getAnimeList(element.select("div.public-list-box"))
-                homeBeanList.add(
-                    HomeBean(
-                        title = title,
-                        moreUrl = moreUrl,
-                        animes = homeItemBeanList
-                    )
-                )
+                homeBeanList.add(HomeBean(title = title, animes = homeItemBeanList))
             }
 
         return homeBeanList

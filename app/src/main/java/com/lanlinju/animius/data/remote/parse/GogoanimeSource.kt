@@ -5,6 +5,7 @@ import com.lanlinju.animius.data.remote.dto.AnimeDetailBean
 import com.lanlinju.animius.data.remote.dto.EpisodeBean
 import com.lanlinju.animius.data.remote.dto.HomeBean
 import com.lanlinju.animius.data.remote.dto.VideoBean
+import com.lanlinju.animius.di.DefaultHttpClient
 import com.lanlinju.animius.util.DownloadManager
 import com.lanlinju.animius.util.getDefaultDomain
 import com.lanlinju.animius.util.getDocument
@@ -26,7 +27,7 @@ object GogoanimeSource : AnimeSource {
     override val DEFAULT_DOMAIN: String = "https://gogoanime.by/"
     override var baseUrl: String = getDefaultDomain()
 
-    private var client: HttpClient = DownloadManager.httpClient
+    private val client: HttpClient = DefaultHttpClient
 
     override suspend fun getHomeData(): List<HomeBean> {
         val document = getDocument(baseUrl)

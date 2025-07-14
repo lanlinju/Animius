@@ -94,7 +94,7 @@ class GugufanSource : AnimeSource {
     override suspend fun getVideoData(episodeUrl: String): VideoBean {
         val nestedUrl = getVideoUrl("${baseUrl}/$episodeUrl")
         val document = getDocument(nestedUrl)
-        val data = document.body().select("script").first()!!.data()
+        val data = document.body().select("script").last()!!.data()
         val videoUrl = extractUrlWithRegex(data)
         val headers = createHeaders(videoUrl)
         return VideoBean(videoUrl, headers)

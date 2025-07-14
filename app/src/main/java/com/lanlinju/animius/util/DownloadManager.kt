@@ -1,28 +1,36 @@
 package com.lanlinju.animius.util
 
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.BrowserUserAgent
+import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.statement.bodyAsText
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
 
 /**
  * Network util
  */
-fun createHttpClient() = HttpClient(OkHttp) {
+fun createHttpClient(
+    clientConfig: HttpClientConfig<*>.() -> Unit = {},
+) = HttpClient(OkHttp) {
+    install(HttpCookies)
     install(HttpTimeout) {
-        socketTimeoutMillis = 30_000L
-        connectTimeoutMillis = 30_000L
+        requestTimeoutMillis = 300_000
+        connectTimeoutMillis = 30_000
+        socketTimeoutMillis = 30_000
     }
-    install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true })
+    BrowserUserAgent()
+    followRedirects = true
+    install(HttpRedirect) {
+        checkHttpMethod = false
+        allowHttpsDowngrade = true
     }
     install(Logging) {
         logger = object : Logger {
@@ -30,12 +38,13 @@ fun createHttpClient() = HttpClient(OkHttp) {
                 message.log("HttpClient")
             }
         }
-        level = LogLevel.INFO
+        level = LogLevel.HEADERS
     }
+    clientConfig()
 }
 
 object DownloadManager {
-    val httpClient = createHttpClient()
+    private val httpClient = createHttpClient()
 
     /*private const val FAKE_BASE_URL = "http://www.example.com"
 

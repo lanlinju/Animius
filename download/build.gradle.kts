@@ -35,7 +35,7 @@ kotlin {
 
 dependencies {
     implementation(libs.androidx.activity.compose)
-    api(platform(libs.okhttp.bom))
-    api(libs.okhttp)
-    api(libs.retrofit)
+    implementation(platform(libs.okhttp.bom))
+    implementation(libs.okhttp)
+    implementation(libs.retrofit)
 }

@@ -44,7 +44,7 @@ import com.lanlinju.download.utils.formatSize
 @Composable
 fun DownloadScreen(
     onNavigateToAnimeDetail: (detailUrl: String, mode: SourceMode) -> Unit,
-    onNavigateToDownloadDetail: (detailUrl: String, title: String) -> Unit,
+    onNavigateToDownloadDetail: (detailUrl: String, title: String, sourceMode: SourceMode) -> Unit,
     onBackClick: () -> Unit
 ) {
     val viewModel: DownloadViewModel = hiltViewModel()
@@ -80,7 +80,7 @@ fun DownloadScreen(
                             },
                             menuText = stringResource(id = R.string.anime_detail),
                             onClick = {
-                                onNavigateToDownloadDetail(download.detailUrl, download.title)
+                                onNavigateToDownloadDetail(download.detailUrl, download.title, download.sourceMode)
                             },
                             onMenuItemClick = {
                                 onNavigateToAnimeDetail(

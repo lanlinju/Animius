@@ -25,6 +25,7 @@ const val KEY_CUSTOM_COLOR = "customColor"
 const val KEY_THEME_MODE = "themeMode"
 const val KEY_DYNAMIC_COLOR = "dynamicColor"
 const val KEY_DYNAMIC_IMAGE_COLOR = "dynamicImageColor"
+const val KEY_PURE_BACKGROUND = "pureBackground"
 
 // danmaku
 const val KEY_DANMAKU_ENABLED = "danmakuEnabled"

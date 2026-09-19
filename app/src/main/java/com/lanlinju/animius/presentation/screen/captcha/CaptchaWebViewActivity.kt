@@ -8,13 +8,16 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -27,10 +30,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.lanlinju.animius.data.remote.parse.util.CaptchaCookieManager
 import com.lanlinju.animius.presentation.theme.AnimeTheme
+import com.lanlinju.animius.util.focus.rememberIsFocused
 
 class CaptchaWebViewActivity : ComponentActivity() {
 
@@ -83,6 +91,10 @@ class CaptchaWebViewActivity : ComponentActivity() {
                             setResult(RESULT_OK, resultIntent)
                             finish()
                         },
+                        onCancel = {
+                            setResult(RESULT_CANCELED)
+                            finish()
+                        },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -96,9 +108,23 @@ class CaptchaWebViewActivity : ComponentActivity() {
 private fun CaptchaWebViewContent(
     url: String,
     onVerificationComplete: (String) -> Unit,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
+    val buttonFocusRequester = remember { FocusRequester() }
+    val (isButtonFocused, buttonFocusModifier) = rememberIsFocused()
+    // 用 View 级别的焦点监听,Compose 的 onFocusChanged 无法正确捕获 WebView 内部焦点
+    var isWebViewFocused by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+
+    // 焦点流转: WebView 焦点时按返回 -> 转移到按钮; 按钮焦点时按返回 -> 退出页面
+    BackHandler(enabled = isWebViewFocused) {
+        buttonFocusRequester.requestFocus()
+    }
+    BackHandler(enabled = isButtonFocused) {
+        onCancel()
+    }
 
     Column(modifier = modifier) {
         AndroidView(
@@ -112,8 +138,44 @@ private fun CaptchaWebViewContent(
                     webViewClient = object : WebViewClient() {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            // 页面加载完成，等待用户手动操作
+                            // 先让 WebView 获得焦点，否则 JS 的 input.focus() 会失效
+                            view?.requestFocus()
+                            // 轮询检测元素出现后立即操作，比固定延迟更快更可靠
+                            view?.evaluateJavascript("""
+                                (function() {
+                                    var tries = 0;
+                                    function clickAnnouncement() {
+                                        var els = document.querySelectorAll('button, a');
+                                        for (var i = 0; i < els.length; i++) {
+                                            var t = (els[i].textContent || '').trim();
+                                            if (t.indexOf('我已了解') >= 0 || t.indexOf('知道了') >= 0 || t === '确定') {
+                                                els[i].click();
+                                                return true;
+                                            }
+                                        }
+                                        return false;
+                                    }
+                                    function focusInput() {
+                                        var input = document.querySelector('input[name=verify]');
+                                        if (input) { input.focus(); input.click(); return true; }
+                                        return false;
+                                    }
+                                    function poll() {
+                                        tries++;
+                                        if (tries > 50) return; // 最多轮询 5 秒
+                                        if (!clickAnnouncement() || !focusInput()) {
+                                            setTimeout(poll, 100);
+                                        }
+                                    }
+                                    poll();
+                                })();
+                            """.trimIndent(), null)
                         }
+                    }
+
+                    // 用 View 级别的焦点监听
+                    setOnFocusChangeListener { _, hasFocus ->
+                        isWebViewFocused = hasFocus
                     }
 
                     loadUrl(url)
@@ -135,6 +197,16 @@ private fun CaptchaWebViewContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .focusRequester(buttonFocusRequester)
+                .then(buttonFocusModifier)
+                .border(
+                    width = if (isButtonFocused) 3.dp else 0.dp,
+                    color = if (isButtonFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    shape = MaterialTheme.shapes.medium
+                ),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
             Text("已完成验证")
         }

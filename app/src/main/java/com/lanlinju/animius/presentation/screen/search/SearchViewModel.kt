@@ -34,9 +34,6 @@ class SearchViewModel @Inject constructor(
     val needCaptchaUrl: StateFlow<String?>
         get() = _needCaptchaUrl
 
-    // 只在第一次进入时请求焦点
-    var hasFocusRequest = false
-
     /**
      * 用于标识使用当前动漫源搜索数据
      *
@@ -70,15 +67,14 @@ class SearchViewModel @Inject constructor(
                 .cachedIn(viewModelScope)
                 .collect {
                     _animesState.value = it
-                    checkNeedCaptcha()
                 }
         }
     }
 
     /**
-     * 检查是否需要验证码
+     * 检查是否需要验证码 — 由 UI 在 PagingSource 加载完成后调用
      */
-    private fun checkNeedCaptcha() {
+    fun checkNeedCaptcha() {
         val url = CaptchaCookieManager.captchaUrl
         if (url.isNotEmpty()) {
             _needCaptchaUrl.value = url

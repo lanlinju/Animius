@@ -45,6 +45,10 @@ class VideoPlayerViewModel @Inject constructor(
     private val _videoState: MutableStateFlow<Resource<Video>> = MutableStateFlow(Resource.Loading)
     val videoState: StateFlow<Resource<Video>> get() = _videoState
 
+    // 切换剧集/线路加载失败的错误（保留当前视频数据时使用，避免整个播放器被失败页替换）
+    private val _videoLoadError = MutableStateFlow<Throwable?>(null)
+    val videoLoadError: StateFlow<Throwable?> get() = _videoLoadError
+
     // 获取保存的偏好设置，初始化弹幕启用状态
     private val preferences = application.preferences
     private val _danmakuEnabled =
@@ -63,8 +67,14 @@ class VideoPlayerViewModel @Inject constructor(
     private var currentEpisodeIndex: Int = 0
     private var historyId: Long = -1L
 
+    // 线路数据
+    private var channels: Map<Int, List<Episode>> = emptyMap()
+    private var currentChannelIndex: Int = 0
+
     // 自动连播相关
     private var autoContinuePlayJob: Job? = null
+    // 视频加载 Job（用于取消上一条 fetch，避免竞态错误）
+    private var videoLoadJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -72,6 +82,8 @@ class VideoPlayerViewModel @Inject constructor(
             savedStateHandle.toRoute<Screen.VideoPlayer>().let {
                 val params = PlayerParameters.deserialize(it.parameters)
                 this@VideoPlayerViewModel.mode = params.mode
+                channels = params.channels
+                currentChannelIndex = params.channelIndex
                 val url = params.episodes[params.episodeIndex].url
                 if (params.isLocalVideo) {
                     // 如果是本地视频，获取本地视频
@@ -97,7 +109,9 @@ class VideoPlayerViewModel @Inject constructor(
                                 lastPlayPosition = lastPlayPosition,
                                 currentEpisodeIndex = params.episodeIndex,
                                 episodes = params.episodes,
-                                headers = it.headers
+                                headers = it.headers,
+                                channels = channels,
+                                channelIndex = currentChannelIndex
                             ).let {
                                 _videoState.value = Resource.Success(it)
 
@@ -159,12 +173,14 @@ class VideoPlayerViewModel @Inject constructor(
      * @param episodeUrl 视频集数的URL
      */
     private fun getVideoFromRemote(episodeUrl: String, index: Int) {
-        viewModelScope.launch {
+        videoLoadJob?.cancel()
+        videoLoadJob = viewModelScope.launch {
             // 使用用例从远程获取视频信息
             getWebVideo(episodeUrl, mode!!)
                 .onSuccess { webVideo ->
                     val lastPlayPosition =
                         roomRepository.getEpisode(episodeUrl).first()?.lastPlayPosition ?: 0L
+                    _videoLoadError.value = null
                     _videoState.value = Resource.Success(
                         _videoState.value.data!!.let {
                             it.copy(
@@ -180,7 +196,13 @@ class VideoPlayerViewModel @Inject constructor(
                     fetchDanmakuSession() // 视频加载成功后获取弹幕
                 }
                 .onError {
-                    _videoState.value = Resource.Error(it)
+                    // 已有正在播放的视频时（切换剧集/线路失败），保留当前视频与播放器 UI，
+                    // 仅标记加载失败，用户可继续切换选集/线路；首次加载失败仍走整页失败。
+                    if (_videoState.value is Resource.Success) {
+                        _videoLoadError.value = it
+                    } else {
+                        _videoState.value = Resource.Error(it)
+                    }
                 }
         }
     }
@@ -241,8 +263,26 @@ class VideoPlayerViewModel @Inject constructor(
             // 如果是远程视频，保存播放进度并重新获取远程视频
             currentEpisodeUrl = url
             currentEpisodeIndex = index
+            _videoLoadError.value = null
             saveVideoPosition(videoPosition)
             getVideoFromRemote(url, index)
+        }
+    }
+
+    /**
+     * 切换线路，仅更新剧集列表，不中断当前播放
+     * @param channelIndex 目标线路索引
+     */
+    fun switchChannel(channelIndex: Int) {
+        if (channelIndex == currentChannelIndex) return
+        currentChannelIndex = channelIndex
+        _videoState.value.data?.let { video ->
+            _videoState.value = Resource.Success(
+                video.copy(
+                    channelIndex = channelIndex,
+                    episodes = channels[channelIndex] ?: video.episodes
+                )
+            )
         }
     }
 
@@ -310,6 +350,15 @@ class VideoPlayerViewModel @Inject constructor(
      */
     fun retry() {
         _videoState.value = Resource.Loading
+        getVideoFromRemote(currentEpisodeUrl, currentEpisodeIndex)
+    }
+
+    /**
+     * 在播放器内重试加载（切换剧集/线路失败后使用）。
+     * 不置 Loading、不替换整个页面，仅重新拉取当前选中的集。
+     */
+    fun retryLoad() {
+        _videoLoadError.value = null
         getVideoFromRemote(currentEpisodeUrl, currentEpisodeIndex)
     }
 }

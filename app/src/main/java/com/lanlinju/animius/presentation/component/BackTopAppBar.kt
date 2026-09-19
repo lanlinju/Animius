@@ -10,9 +10,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.lanlinju.animius.R
+import com.lanlinju.animius.util.focus.focusedIconButtonColors
+import com.lanlinju.animius.util.focus.rememberIsFocused
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +28,8 @@ fun BackTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     onBackClick: () -> Unit
 ) {
+    val (backFocused, focusModifier) = rememberIsFocused()
+
     TopAppBar(
         title = {
             Text(
@@ -31,10 +40,16 @@ fun BackTopAppBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onBackClick) {
+            IconButton(
+                colors = focusedIconButtonColors(backFocused),
+                modifier = focusModifier,
+                onClick = onBackClick
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(id = R.string.back)
+                    contentDescription = stringResource(id = R.string.back),
+                    tint = if (backFocused) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurface
                 )
             }
         },

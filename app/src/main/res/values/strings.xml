@@ -86,6 +86,8 @@
     <string name="dynamic_image_color">动态图片颜色</string>
     <string name="dynamic_color_description">应用来自于壁纸的颜色</string>
     <string name="dynamic_image_color_description">根据动漫封面动态更改主题颜色</string>
+    <string name="pure_background">黑白背景</string>
+    <string name="pure_background_description">浅色模式使用白色背景和表面色，深色模式使用黑色背景和表面色</string>
     <string name="github_release_address">Github发布页</string>
 
     <!-- danmaku settings-->
@@ -126,4 +128,5 @@
     <string name="use_download_directory">使用Download目录</string>
     <string name="auto_continue_play">自动连播</string>
     <string name="auto_play_next">%1$ds后自动播放下一集...</string>
+    <string name="clear">清除</string>
 </resources>

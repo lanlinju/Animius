@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,7 +49,7 @@ fun MainScreen(
     val pagerState = rememberPagerState(initialPage = 1) { NavigationBarPath.entries.size }
     val scope = rememberCoroutineScope()
 
-    val configuration = LocalConfiguration.current // 屏幕方向改变会触发 recompose
+    val configuration = LocalConfiguration.current
     val context = LocalContext.current
 
     // 在屏幕方向变化时更新 isWideScreen

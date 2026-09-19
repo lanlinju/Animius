@@ -1,5 +1,6 @@
 package com.lanlinju.animius.util
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.lanlinju.animius.application.AnimeApplication
 import com.lanlinju.animius.data.remote.parse.AgedmSource
 import com.lanlinju.animius.data.remote.parse.AnimeSource
@@ -29,7 +30,7 @@ object SourceHolder {
     val currentSourceMode: SourceMode
         get() = _currentSourceMode
 
-    var isSourceChanged = false
+    val isSourceChanged = MutableStateFlow(0)
 
     init {
         val preferences = AnimeApplication.getInstance().preferences

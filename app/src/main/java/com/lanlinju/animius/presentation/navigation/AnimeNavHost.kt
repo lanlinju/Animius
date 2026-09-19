@@ -27,7 +27,7 @@ fun AnimeNavHost(
     onNavigateToVideoPlay: (parameters: String) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToDownload: () -> Unit,
-    onNavigateToDownloadDetail: (detailUrl: String, title: String) -> Unit,
+    onNavigateToDownloadDetail: (detailUrl: String, title: String, sourceMode: SourceMode) -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToAppearance: () -> Unit,
     onNavigateToDanmakuSettings: () -> Unit,
@@ -83,7 +83,8 @@ fun AnimeNavHost(
         composable<Screen.DownloadDetail> {
             DownloadDetailScreen(
                 onBackClick = onBackClick,
-                onNavigateToVideoPlay = onNavigateToVideoPlay
+                onNavigateToVideoPlay = onNavigateToVideoPlay,
+                onNavigateToAnimeDetail = onNavigateToAnimeDetail
             )
         }
         composable<Screen.Appearance> {

@@ -11,3 +11,9 @@ local.properties
 release/
 /.kotlin
 debug/
+nul
+.junie
+.mimocode
+.opencode
+openspec/
+.vscode/

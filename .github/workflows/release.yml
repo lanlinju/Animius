@@ -16,13 +16,13 @@ jobs:
 
       # Set up JDK 17
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # 同 android_ci.yml：不用 android-actions/setup-android，
+      # 它下载的 cmdline-tools 已被 Google 下架（404），镜像自带的本项目需要的 SDK。
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4

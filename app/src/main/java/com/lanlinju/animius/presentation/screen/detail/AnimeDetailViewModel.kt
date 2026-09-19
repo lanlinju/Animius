@@ -65,8 +65,26 @@ class AnimeDetailViewModel @Inject constructor(
     private fun getAnimeDetail(detailUrl: String) {
         viewModelScope.launch {
             _isFavourite.value = roomRepository.checkFavourite(detailUrl).first()
-            getAnimeDetailUseCase(detailUrl, mode).collect {
-                _animeDetailState.value = it
+            getAnimeDetailUseCase(detailUrl, mode).collect { resource ->
+                if (resource is Resource.Success && resource.data != null) {
+                    val current = (_animeDetailState.value as? Resource.Success)?.data
+                    if (current != null && current.channelIndex > 0) {
+                        // Preserve user's channel selection across Room-triggered re-emissions.
+                        // The UseCase flow re-emits with channelIndex=0 whenever Room DB changes
+                        // (e.g., after addHistory), which would overwrite the user's choice.
+                        _animeDetailState.value = Resource.Success(
+                            resource.data.copy(
+                                channelIndex = current.channelIndex,
+                                episodes = current.episodes,
+                            )
+                        )
+                    } else {
+                        // First load or same channel: accept Room-updated episode metadata
+                        _animeDetailState.value = resource
+                    }
+                } else {
+                    _animeDetailState.value = resource
+                }
             }
         }
     }

@@ -87,8 +87,8 @@ private fun App(modifier: Modifier = Modifier) {
         onNavigateToDownload = {
             navController.navigate(Screen.Download)
         },
-        onNavigateToDownloadDetail = { detailUrl, title ->
-            navController.navigate(Screen.DownloadDetail(detailUrl, title))
+        onNavigateToDownloadDetail = { detailUrl, title, sourceMode ->
+            navController.navigate(Screen.DownloadDetail(detailUrl, title, sourceMode))
         },
         onNavigateToSearch = {
             navController.navigate(Screen.Search)

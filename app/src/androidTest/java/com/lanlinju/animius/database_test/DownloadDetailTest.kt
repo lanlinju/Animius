@@ -26,7 +26,7 @@ class DownloadDetailTest {
     private lateinit var animeDatabase: AnimeDatabase
 
     private var download =
-        DownloadEntity(1, "海贼王1", "/detailUrl1", "/imgUrl1", SourceMode.Yhdm.name, System.currentTimeMillis())
+        DownloadEntity(1, "海贼王1", "/detailUrl1", "/imgUrl1", SourceMode.Silisili.name, System.currentTimeMillis())
     private val downloadDetail1 = DownloadDetailEntity(
         1, download.downloadId, "第01集", "/imgUrl1",
         1, "/downloadUrl1", "/filePath")

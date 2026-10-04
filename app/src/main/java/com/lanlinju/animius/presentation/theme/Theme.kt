@@ -16,6 +16,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -75,6 +76,7 @@ fun AnimeTheme(
     customColorScheme: ColorScheme = LightColorScheme,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
+    pureBackground: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -84,6 +86,14 @@ fun AnimeTheme(
         }
 
         else -> customColorScheme
+    }.let { scheme ->
+        if (pureBackground) {
+            val bgColor = if (darkTheme) Color(0xFF121212) else Color.White
+            scheme.copy(
+                background = bgColor,
+                surface = bgColor
+            )
+        } else scheme
     }
 
     val view = LocalView.current
@@ -109,6 +119,7 @@ fun AnimeTheme(content: @Composable () -> Unit) {
     val themeModeState by SettingsPreferences.themeMode.collectAsState()
     val customColor by SettingsPreferences.customColor.collectAsState()
     val dynamicColor by SettingsPreferences.dynamicColor.collectAsState()
+    val pureBackground by SettingsPreferences.pureBackground.collectAsState()
 
     val darkTheme = when (themeModeState) {
         SettingsPreferences.ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -120,6 +131,7 @@ fun AnimeTheme(content: @Composable () -> Unit) {
         darkTheme = darkTheme,
         customColorScheme = getSchemeFromSeed(customColor, darkTheme),
         dynamicColor = dynamicColor,
+        pureBackground = pureBackground,
         content = content
     )
 }

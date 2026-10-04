@@ -17,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -27,6 +28,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @JvmInline
 value class ResizeMode private constructor(val value: Int) {
@@ -69,6 +72,7 @@ private fun Modifier.defaultPlayerDragGestures(playerState: VideoPlayerState) =
         var gestureDownBrightness = 0f
         val maxFastForwardDuration = 180_000L // 最大快进时长为180秒
         val threshold = (12.dp).toPx() // 拖动距离超过12dp后开始计算
+        val horizontalEdgeExclusionPx = (40.dp).toPx() // 屏幕左右边缘安全区域，避免与系统侧滑返回冲突
         val audioManager = playerState.audioManager
         val layoutParams = playerState.window.attributes
         detectDragGestures(
@@ -91,8 +95,12 @@ private fun Modifier.defaultPlayerDragGestures(playerState: VideoPlayerState) =
             ) {
                 if (absDeltaX > threshold || absDeltaY > threshold) {
                     if (absDeltaX >= threshold) {
-                        isChangePosition = true
-                        gestureDownPosition = playerState.player.currentPosition
+                        // 水平滑动仅在下按点位于水平安全区域内时触发快进快退，
+                        // 屏幕左右边缘 40dp 内留给系统侧滑返回手势
+                        if (downX > horizontalEdgeExclusionPx && downX < size.width - horizontalEdgeExclusionPx) {
+                            isChangePosition = true
+                            gestureDownPosition = playerState.player.currentPosition
+                        }
                     } else {
                         if (change.position.x < size.width * 0.5f) {
                             isChangeBrightness = true
@@ -185,6 +193,10 @@ private fun VideoPlayer(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .onPreviewKeyEvent {
+                playerState.onUserInteraction()
+                false // don't consume, pass through to children
+            }
             .defaultPlayerTapGestures(playerState, haptics)
             .defaultPlayerDragGestures(playerState)
     ) {
@@ -253,13 +265,25 @@ fun VideoPlayer(
 
     LaunchedEffect(url) {
         playerState.player.setVideoUrl(url, headers)
+        // 清单里的 BANDWIDTH 不可信,HLS 码率一律改由分片级统计提供
+        playerState.setSegmentBitrateSource(isHlsUrl(url))
         playerState.player.prepare()
         playerState.player.seekTo(videoPosition)
         playerState.player.playWhenReady = true
-        playerState.showControlUi()
+    }
+
+    LaunchedEffect(url) {
+        playerState.resetMediaSizeProbe()
+        // HEAD 请求会阻塞,放到 IO 线程,不拖慢起播
+        val size = withContext(Dispatchers.IO) { probeMediaSize(url, headers) }
+        playerState.setMediaSize(size)
     }
 
     BackHandler {
-        onBackPress()
+        if (playerState.isControlUiVisible.value) {
+            playerState.hideControlUi()
+        } else {
+            onBackPress()
+        }
     }
 }

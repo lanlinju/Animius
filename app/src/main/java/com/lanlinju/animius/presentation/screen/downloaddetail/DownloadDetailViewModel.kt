@@ -8,6 +8,7 @@ import com.lanlinju.animius.domain.model.DownloadDetail
 import com.lanlinju.animius.domain.repository.RoomRepository
 import com.lanlinju.animius.presentation.navigation.Screen
 import com.lanlinju.animius.util.Resource
+import com.lanlinju.animius.util.SourceMode
 import com.lanlinju.download.core.DownloadTask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,10 +30,18 @@ class DownloadDetailViewModel @Inject constructor(
     private val _title: MutableStateFlow<String> = MutableStateFlow("")
     val title: StateFlow<String> get() = _title
 
+    private val _detailUrl: MutableStateFlow<String> = MutableStateFlow("")
+    val detailUrl: StateFlow<String> get() = _detailUrl
+
+    private val _sourceMode: MutableStateFlow<SourceMode> = MutableStateFlow(SourceMode.Agedm)
+    val sourceMode: StateFlow<SourceMode> get() = _sourceMode
+
 
     init {
         savedStateHandle.toRoute<Screen.DownloadDetail>().let {
             _title.value = it.title
+            _detailUrl.value = it.detailUrl
+            _sourceMode.value = it.sourceMode
             getDownloadDetails(it.detailUrl)
         }
     }

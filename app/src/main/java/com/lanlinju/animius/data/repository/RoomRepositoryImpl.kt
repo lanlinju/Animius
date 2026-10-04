@@ -26,8 +26,9 @@ class RoomRepositoryImpl @Inject constructor(
     private val downloadDetailDao = database.downloadDetailDao()
 
     override suspend fun getFavourites(): Flow<List<Favourite>> {
+        // mapNotNull：数据源已被移除的收藏记录读不出 SourceMode，直接跳过
         return favouriteDao.getAllFavourites()
-            .map { it.map { favouriteEntity -> favouriteEntity.toFavourite() } }
+            .map { it.mapNotNull { favouriteEntity -> favouriteEntity.toFavourite() } }
     }
 
     override suspend fun addOrRemoveFavourite(favourite: Favourite) {
@@ -79,8 +80,9 @@ class RoomRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getHistories(): Flow<List<History>> {
+        // mapNotNull：数据源已被移除的历史记录读不出 SourceMode，直接跳过
         return historyDao.getHistoryWithEpisodes().map {
-            it.map { it.toHistory() }
+            it.mapNotNull { it.toHistory() }
         }
     }
 
@@ -112,8 +114,9 @@ class RoomRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getDownloads(): Flow<List<Download>> {
+        // mapNotNull：数据源已被移除的下载记录读不出 SourceMode，直接跳过
         return downloadDao.getDownloads().map {
-            it.map { it.toDownload() }
+            it.mapNotNull { it.toDownload() }
         }
     }
 

@@ -3,9 +3,12 @@ package com.lanlinju.animius.presentation.screen.videoplayer
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.text.format.Formatter
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
@@ -26,6 +29,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -45,8 +51,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -55,6 +63,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,11 +76,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,10 +102,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -103,8 +114,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -115,6 +127,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.C
 import com.anime.danmaku.api.DanmakuEvent
 import com.anime.danmaku.api.DanmakuPresentation
 import com.anime.danmaku.api.DanmakuSession
@@ -125,6 +138,7 @@ import com.lanlinju.animius.domain.model.Episode
 import com.lanlinju.animius.domain.model.Video
 import com.lanlinju.animius.presentation.component.Forward85
 import com.lanlinju.animius.presentation.component.StateHandler
+import com.lanlinju.animius.presentation.screen.webauth.WebAuthActivity
 import com.lanlinju.animius.presentation.screen.settings.DanmakuConfigData
 import com.lanlinju.animius.presentation.theme.AnimeTheme
 import com.lanlinju.animius.presentation.theme.padding
@@ -133,6 +147,10 @@ import com.lanlinju.animius.util.KEY_AUTO_ORIENTATION_ENABLED
 import com.lanlinju.animius.util.KEY_DANMAKU_CONFIG_DATA
 import com.lanlinju.animius.util.isAndroidTV
 import com.lanlinju.animius.util.isTabletDevice
+import com.lanlinju.animius.util.focus.focusedIconButtonColors
+import com.lanlinju.animius.util.focus.focusedOutlinedButtonColors
+import com.lanlinju.animius.util.focus.focusedTextButtonColors
+import com.lanlinju.animius.util.focus.rememberIsFocused
 import com.lanlinju.animius.util.isWideScreen
 import com.lanlinju.animius.util.openExternalPlayer
 import com.lanlinju.animius.util.rememberPreference
@@ -142,26 +160,31 @@ import com.lanlinju.videoplayer.VideoPlayer
 import com.lanlinju.videoplayer.VideoPlayerControl
 import com.lanlinju.videoplayer.VideoPlayerState
 import com.lanlinju.videoplayer.prettyVideoTimestamp
+import com.lanlinju.videoplayer.component.Slider
 import com.lanlinju.videoplayer.rememberVideoPlayerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-private val Speeds = arrayOf(
-    "0.5X" to 0.5f,
-    "0.75X" to 0.75f,
-    "1.0X" to 1.0f,
-    "1.25X" to 1.25f,
-    "1.5X" to 1.5f,
-    "2.0X" to 2.0f
+/** 侧栏选项：label 是显示文案，value 是点击后要应用的值。 */
+private data class SideSheetOption<T>(val label: String, val value: T)
+
+/** 倍速档位，按升序定义；显示时反转成从快到慢（见 [SpeedSideSheet]）。 */
+private val Speeds = listOf(
+    SideSheetOption("0.5X", 0.5f),
+    SideSheetOption("0.75X", 0.75f),
+    SideSheetOption("1.0X", 1.0f),
+    SideSheetOption("1.25X", 1.25f),
+    SideSheetOption("1.5X", 1.5f),
+    SideSheetOption("2.0X", 2.0f)
 )
 
-private val Resizes = arrayOf(
-    "适应" to ResizeMode.Fit,
-    "拉伸" to ResizeMode.Fill,
-    "填充" to ResizeMode.Full,
-    "16:9" to ResizeMode.FixedRatio_16_9,
-    "4:3" to ResizeMode.FixedRatio_4_3,
+private val Resizes = listOf(
+    SideSheetOption("适应", ResizeMode.Fit),
+    SideSheetOption("拉伸", ResizeMode.Fill),
+    SideSheetOption("填充", ResizeMode.Full),
+    SideSheetOption("16:9", ResizeMode.FixedRatio_16_9),
+    SideSheetOption("4:3", ResizeMode.FixedRatio_4_3),
 )
 
 /* 屏幕方向改变会导致丢失状态 */
@@ -173,28 +196,149 @@ fun VideoPlayScreen(
     val animeVideoState by viewModel.videoState.collectAsStateWithLifecycle()
     val danmakuEnabled by viewModel.danmakuEnabled.collectAsStateWithLifecycle()
     val danmakuSession by viewModel.danmakuSession.collectAsStateWithLifecycle()
+    val needWebAuth by viewModel.needWebAuth.collectAsStateWithLifecycle()
     val view = LocalView.current
-    val activity = LocalActivity.current ?: LocalActivity.current as Activity
+    // LocalActivity is only provided by a ComponentActivity's setContent; the player is always
+    // activity-hosted, so fail loudly here instead of on a confusing cast at the use site.
+    val activity = requireNotNull(LocalActivity.current) {
+        "VideoPlayScreen must be hosted by a ComponentActivity"
+    }
     val isAutoOrientation by rememberPreference(KEY_AUTO_ORIENTATION_ENABLED, true)
     var isAutoContinuePlayEnabled by rememberPreference(KEY_AUTO_CONTINUE_PLAY_ENABLED, false)
 
     // Handle screen orientation and screen-on state
     ManageScreenState(view, activity)
 
+    // 数据源要求先登录时，拉起网页；完成后自动重试当前集
+    val webAuthContext = LocalContext.current
+    val webAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val authenticated = result.resultCode == Activity.RESULT_OK
+        viewModel.clearNeedWebAuth()
+        if (authenticated) {
+            viewModel.retryAfterWebAuth()
+        }
+    }
+
+    needWebAuth?.let { request ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearNeedWebAuth() },
+            title = { Text(request.title) },
+            text = { Text("该数据源需要登录后才能播放，登录完成后将自动继续播放") },
+            confirmButton = {
+                val (isFocused, focusModifier) = rememberIsFocused()
+                TextButton(
+                    onClick = {
+                        webAuthLauncher.launch(
+                            WebAuthActivity.createIntent(
+                                context = webAuthContext,
+                                url = request.url,
+                                title = request.title,
+                                tokenScript = request.tokenScript
+                            )
+                        )
+                    },
+                    modifier = Modifier.then(focusModifier),
+                    colors = focusedTextButtonColors(isFocused)
+                ) {
+                    Text("去登录")
+                }
+            },
+            dismissButton = {
+                val (isFocused, focusModifier) = rememberIsFocused()
+                TextButton(
+                    onClick = { viewModel.clearNeedWebAuth() },
+                    modifier = Modifier.then(focusModifier),
+                    colors = focusedTextButtonColors(isFocused)
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
     StateHandler(
         state = animeVideoState,
         onLoading = { ShowLoadingPage() },
-        onFailure = { ShowFailurePage(viewModel, onBackClick) }
+        onFailure = { ShowFailurePage(viewModel, it.error, onBackClick) }
     ) { resource ->
         resource.data?.let { video ->
 
             val playerState = rememberVideoPlayerState(isAutoOrientation = isAutoOrientation)
 
+            val sliderFocusRequester = remember { FocusRequester() }
+            val backFocusRequester = remember { FocusRequester() }
+            val forwardFocusRequester = remember { FocusRequester() }
+            val playPauseFocusRequester = remember { FocusRequester() }
+            val episodeFocusRequester = remember { FocusRequester() }
+            var pendingFocusTarget by remember { mutableStateOf<FocusTarget?>(null) }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
-                    .adaptiveSize(playerState.isFullscreen.value, view, activity),
+                    .adaptiveSize(playerState.isFullscreen.value, view, activity)
+                    .focusable()
+                    .onKeyEvent { event ->
+                        // Back key: immediately hide any visible player UI
+                        // Intercepted here because OnBackPressedDispatcher/BackHandler
+                        // does not fire reliably on tablet/non-TV Compose for the first press.
+                        if (event.type == KeyEventType.KeyUp && event.key == Key.Back) {
+                            when {
+                                playerState.isSpeedUiVisible.value -> { playerState.hideSpeedUi(); return@onKeyEvent true }
+                                playerState.isResizeUiVisible.value -> { playerState.hideResizeUi(); return@onKeyEvent true }
+                                playerState.isEpisodeUiVisible.value -> { playerState.hideEpisodeUi(); return@onKeyEvent true }
+                                playerState.isControlUiVisible.value -> { playerState.hideControlUi(); return@onKeyEvent true }
+                            }
+                        }
+                        // 侧栏打开时交给侧栏自己处理按键
+                        if (playerState.isEpisodeUiVisible.value ||
+                            playerState.isSpeedUiVisible.value ||
+                            playerState.isResizeUiVisible.value) return@onKeyEvent false
+                        // 控制 UI 可见：交给默认焦点导航（Slider 可聚焦，按钮间正常左右导航）
+                        if (playerState.isControlUiVisible.value) return@onKeyEvent false
+                        // 隐藏 UI 快捷键
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.DirectionLeft -> {
+                                    playerState.onTimedSeek(-10000)
+                                    pendingFocusTarget = FocusTarget.SLIDER
+                                    true
+                                }
+                                Key.DirectionRight -> {
+                                    playerState.onTimedSeek(10000)
+                                    pendingFocusTarget = FocusTarget.SLIDER
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else if (event.type == KeyEventType.KeyUp) {
+                            when (event.key) {
+                                Key.DirectionUp -> {
+                                    playerState.showControlUi()
+                                    pendingFocusTarget = FocusTarget.FORWARD
+                                    true
+                                }
+                                Key.DirectionDown -> {
+                                    playerState.showControlUi()
+                                    pendingFocusTarget = FocusTarget.EPISODE
+                                    true
+                                }
+                                Key.DirectionCenter, Key.Spacebar -> {
+                                    if (playerState.isPlaying.value) {
+                                        playerState.control.pause()
+                                        playerState.showControlUi()
+                                        pendingFocusTarget = FocusTarget.PLAY_PAUSE
+                                    } else {
+                                        playerState.control.play()
+                                    }
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    },
                 contentAlignment = Alignment.Center
             ) {
 
@@ -205,16 +349,65 @@ fun VideoPlayScreen(
                     playerState = playerState,
                     headers = video.headers,
                     onBackPress = { handleBackPress(playerState, onBackClick, view, activity) },
-                    modifier = Modifier
-                        .focusable()
-                        .defaultRemoteControlHandler(
-                            playerState = playerState,
-                            onNextClick = { viewModel.playNextEpisode(playerState.player.currentPosition) }
-                        )
                 ) {
+
+                    // Deferred focus: wait for AnimatedVisibility to compose before requesting
+                    LaunchedEffect(pendingFocusTarget) {
+                        pendingFocusTarget?.let { target ->
+                            delay(50)
+                            runCatching {
+                                when (target) {
+                                    FocusTarget.FORWARD -> forwardFocusRequester.requestFocus()
+                                    FocusTarget.PLAY_PAUSE -> playPauseFocusRequester.requestFocus()
+                                    FocusTarget.EPISODE -> episodeFocusRequester.requestFocus()
+                                    FocusTarget.SLIDER -> sliderFocusRequester.requestFocus()
+                                }
+                            }
+                            pendingFocusTarget = null
+                        }
+                    }
+
+                    val context = LocalContext.current
+                    val videoSize = playerState.videoSize.value
+                    val subtitle = if (videoSize.width > 0 && videoSize.height > 0) {
+                        // media3 的 Format.bitrate 是「峰值优先」填的(peakBitrate 有值时用它),
+                        // 平均口径在 averageBitrate 里。MP4 容器的 btrt 常常 max=4Mbps/avg=1.5Mbps,
+                        // 只显示 bitrate 会让人以为片子有 4Mbps,所以两个口径分开显示
+                        val videoFormat = playerState.player.currentTracks.groups
+                            .firstOrNull { it.type == C.TRACK_TYPE_VIDEO }
+                            ?.getTrackFormat(0)
+                        val avgBitrate = videoFormat?.averageBitrate?.takeIf { it > 0 }
+                            ?: videoFormat?.bitrate?.takeIf { it > 0 }
+                        // 峰值和平均值相同(CBR/只声明了一个值)时不再重复显示
+                        val peakBitrate = videoFormat?.peakBitrate?.takeIf { it > 0 && it != avgBitrate }
+                        val measuredBitrate = playerState.measuredBitrateBps.value
+                        val sizeBytes = playerState.mediaSizeBytes.value
+                        // 清单里的 BANDWIDTH 是峰值上界,常与真实码率差很远(实测平均值反超它也是常态),
+                        // HLS 一律改用分片级实测值,不去猜声明值准不准
+                        val isHls = playerState.isSegmentBitrateSource.value
+                        fun mbps(bps: Long) = "%.1f".format(bps / 1_000_000f)
+                        buildList {
+                            add("${videoSize.width}×${videoSize.height}")
+                            if (isHls) {
+                                // 分片统计要等首片下完,等待期间先占个位
+                                add(measuredBitrate?.let { "Bitrate ≈${mbps(it)}Mbps" } ?: "Bitrate ≈--")
+                            } else {
+                                avgBitrate?.let { add("Bitrate ${mbps(it.toLong())}Mbps") }
+                                peakBitrate?.let { add("峰值 ${mbps(it.toLong())}Mbps") }
+                            }
+                            when {
+                                sizeBytes != null -> add(Formatter.formatFileSize(context, sizeBytes))
+                                // HLS 是分片流没有单一文件大小;探测完了还拿不到长度的也算未知。
+                                // 探测期间先不写,免得先显示"未知"再跳出真实大小
+                                isHls || playerState.isMediaSizeProbed.value -> add("大小未知")
+                            }
+                        }.joinToString(" · ")
+                    } else null
+
                     VideoPlayerControl(
                         state = playerState,
                         title = "${video.title}-${video.episodeName}",
+                        subtitle = subtitle,
                         danmakuEnabled = danmakuEnabled,
                         onBackClick = { handleBackPress(playerState, onBackClick, view, activity) },
                         onNextClick = {
@@ -227,11 +420,24 @@ fun VideoPlayScreen(
                                 video = video,
                                 isAutoContinuePlayEnabled = isAutoContinuePlayEnabled,
                                 onAutoContinuePlayClick = { isAutoContinuePlayEnabled = it },
-                                onForwardClick = { playerState.control.skip(85000) }
+                                onForwardClick = { playerState.control.skip(85000) },
+                                forwardFocusRequester = forwardFocusRequester
                             )
                         },
-                        onDanmakuClick = { viewModel.setEnabledDanmaku(it) }
+                        onDanmakuClick = { viewModel.setEnabledDanmaku(it) },
+                        modifier = Modifier,
+                        sliderFocusRequester = sliderFocusRequester,
+                        backFocusRequester = backFocusRequester,
+                        forwardFocusRequester = forwardFocusRequester,
+                        playPauseFocusRequester = playPauseFocusRequester,
+                        episodeFocusRequester = episodeFocusRequester
                     )
+                }
+
+                // Default focus on initial load
+                LaunchedEffect(Unit) {
+                    delay(100)
+                    runCatching { playPauseFocusRequester.requestFocus() }
                 }
 
                 // Danmaku and additional UI components
@@ -280,11 +486,18 @@ private fun ShowLoadingPage() {
 
 // Failure screen composable
 @Composable
-private fun ShowFailurePage(viewModel: VideoPlayerViewModel, onBackClick: () -> Unit) {
+private fun ShowFailurePage(
+    viewModel: VideoPlayerViewModel,
+    error: Throwable?,
+    onBackClick: () -> Unit
+) {
+    val retryFocusRequester = remember { FocusRequester() }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -299,17 +512,43 @@ private fun ShowFailurePage(viewModel: VideoPlayerViewModel, onBackClick: () -> 
             color = Color.White,
             style = MaterialTheme.typography.bodyMedium
         )
-        Spacer(modifier = Modifier.padding(vertical = 8.dp))
-        OutlinedButton(onClick = onBackClick) {
-            Text(text = stringResource(id = R.string.back), color = Color.White)
-        }
-        Spacer(modifier = Modifier.padding(vertical = 8.dp))
-        OutlinedButton(onClick = { viewModel.retry() }) {
+        // 把失败原因透出来。各数据源在取播放地址时抛的异常信息是用户判断
+        // "换线路/稍后再试/该源已失效"的唯一依据(例如稀饭动漫的
+        // "该集暂无播放地址")，只显示一句通用的 "找不到番剧" 会让人无从下手。
+        error?.message?.takeIf { it.isNotBlank() }?.let { reason ->
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
             Text(
-                text = stringResource(id = R.string.retry),
-                color = MaterialTheme.colorScheme.primary
+                text = reason,
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
             )
         }
+        Spacer(modifier = Modifier.padding(vertical = 8.dp))
+        val (backFocused, backModifier) = rememberIsFocused()
+        OutlinedButton(
+            onClick = onBackClick,
+            modifier = Modifier.then(backModifier),
+            colors = focusedOutlinedButtonColors(
+                backFocused,
+                unfocusedContentColor = Color.White
+            )
+        ) {
+            Text(text = stringResource(id = R.string.back))
+        }
+        Spacer(modifier = Modifier.padding(vertical = 8.dp))
+        val (retryFocused, retryModifier) = rememberIsFocused()
+        OutlinedButton(
+            onClick = { viewModel.retry() },
+            modifier = Modifier.focusRequester(retryFocusRequester).then(retryModifier),
+            colors = focusedOutlinedButtonColors(retryFocused)
+        ) {
+            Text(text = stringResource(id = R.string.retry))
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        runCatching { retryFocusRequester.requestFocus() }
     }
 }
 
@@ -376,72 +615,45 @@ private fun DanmakuHost(
     }
 }
 
-private fun Modifier.defaultRemoteControlHandler(
-    playerState: VideoPlayerState,
-    onNextClick: () -> Unit = {},
-) = onKeyEvent { keyEvent: KeyEvent ->
-    if (keyEvent.type == KeyEventType.KeyDown)
-        when (keyEvent.key) {
-            Key.DirectionLeft -> {
-                playerState.showControlUi()
-                playerState.control.rewind()
-                true
-            }
-
-            Key.DirectionRight -> {
-                playerState.showControlUi()
-                playerState.control.forward()
-                true
-            }
-
-            Key.DirectionUp -> {
-                playerState.showEpisodeUi()
-                true
-            }
-
-            Key.DirectionDown -> {
-                playerState.showControlUi()
-                onNextClick()
-                true
-            }
-
-            Key.DirectionCenter, Key.Spacebar -> {
-                if (playerState.isPlaying.value) {
-                    playerState.showControlUi()
-                    playerState.control.pause()
-                } else {
-                    playerState.control.play()
-                }
-                true
-            }
-
-            else -> false
-        } else {
-        false
-    }
-}
+private enum class FocusTarget { FORWARD, PLAY_PAUSE, EPISODE, SLIDER }
 
 @Composable
 private fun OptionsContent(
     video: Video,
     isAutoContinuePlayEnabled: Boolean,
     onAutoContinuePlayClick: (Boolean) -> Unit,
-    onForwardClick: () -> Unit = {}
+    onForwardClick: () -> Unit = {},
+    forwardFocusRequester: FocusRequester = remember { FocusRequester() }
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val (forwardFocused, forwardModifier) = rememberIsFocused()
+    val (moreFocused, moreModifier) = rememberIsFocused()
     Row {
-        IconButton(onClick = onForwardClick) {
+        IconButton(
+            onClick = onForwardClick,
+            colors = focusedIconButtonColors(forwardFocused, Color.White),
+            modifier = forwardModifier
+                .focusRequester(forwardFocusRequester)
+        ) {
             Icon(
                 imageVector = Icons.Rounded.Forward85,
-                contentDescription = "Forward 85s"
+                contentDescription = "Forward 85s",
+                tint = if (forwardFocused) MaterialTheme.colorScheme.onPrimary
+                else Color.White
             )
         }
 
         Box {
-            IconButton(onClick = { expanded = true }) {
+            IconButton(
+                onClick = { expanded = true },
+                colors = focusedIconButtonColors(moreFocused, Color.White),
+                modifier = moreModifier
+            ) {
                 Icon(
                     imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = null
+                    contentDescription = null,
+                    tint = if (moreFocused) MaterialTheme.colorScheme.onPrimary
+                    else Color.White
                 )
             }
 
@@ -449,26 +661,46 @@ private fun OptionsContent(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
+                val (externalPlayFocused, externalModifier) = rememberIsFocused()
                 DropdownMenuItem(
                     text = {
-                        Text(text = stringResource(id = R.string.external_play))
+                        Text(
+                            text = stringResource(id = R.string.external_play),
+                            color = if (externalPlayFocused) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurface
+                        )
                     },
                     onClick = {
                         expanded = false
                         openExternalPlayer(video.url)
-                    }
+                    },
+                    modifier = externalModifier
+                        .then(
+                            if (externalPlayFocused) Modifier.background(MaterialTheme.colorScheme.primary)
+                            else Modifier
+                        )
                 )
 
+                val (autoPlayFocused, autoPlayModifier) = rememberIsFocused()
                 DropdownMenuItem(
                     text = {
                         Text(
                             text = stringResource(R.string.auto_continue_play),
-                            color = if (isAutoContinuePlayEnabled) MaterialTheme.colorScheme.primary else Color.Black
+                            color = when {
+                                autoPlayFocused -> MaterialTheme.colorScheme.onPrimary
+                                isAutoContinuePlayEnabled -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
                         )
                     },
                     onClick = {
                         onAutoContinuePlayClick(!isAutoContinuePlayEnabled)
-                    }
+                    },
+                    modifier = autoPlayModifier
+                        .then(
+                            if (autoPlayFocused) Modifier.background(MaterialTheme.colorScheme.primary)
+                            else Modifier
+                        )
                 )
             }
         }
@@ -530,19 +762,23 @@ private fun VideoStateMessage(
     modifier: Modifier = Modifier
 ) {
     val videoState = viewModel.videoState.collectAsState().value
+    val videoLoadError by viewModel.videoLoadError.collectAsState()
 
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        if (playerState.isLoading.value && !playerState.isError.value && !playerState.isSeeking.value) {
+        if (playerState.isLoading.value && !playerState.isError.value && !playerState.isSeeking.value && videoLoadError == null) {
             CircularProgressIndicator()
         }
 
-        if (playerState.isError.value) {
+        // 加载失败（切换剧集/线路或播放器错误）：显示错误浮层
+        if (videoLoadError != null || playerState.isError.value) {
             ShowVideoMessage(
                 stringResource(id = R.string.video_error_msg),
-                onRetryClick = { playerState.control.retry() }
+                onRetryClick = {
+                    if (videoLoadError != null) viewModel.retryLoad() else playerState.control.retry()
+                }
             )
         }
 
@@ -553,7 +789,7 @@ private fun VideoStateMessage(
             FloatingMessageIndicator(stringResource(R.string.auto_play_next, countdown))
         }
 
-        if (playerState.isSeeking.value) {
+        if (playerState.isSeeking.value && playerState.isControlUiVisible.value) {
             TimelineIndicator(
                 (playerState.videoDurationMs.value * playerState.videoProgress.value).toLong(),
                 playerState.videoDurationMs.value
@@ -802,26 +1038,26 @@ private fun ShowVideoMessage(text: String, onRetryClick: (() -> Unit)? = null) {
         // 重试 Button
         onRetryClick?.let {
             val focusRequester = remember { FocusRequester() }
-            val isAndroidTV = isAndroidTV(LocalContext.current)
+            val interactionSource = remember { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val isActive = isFocused || isPressed
             Spacer(modifier = Modifier.padding(vertical = 8.dp))
             OutlinedButton(
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isAndroidTV) MaterialTheme.colorScheme.primary.copy(
-                        alpha = 0.3f
-                    ) else Color.Unspecified
+                colors = focusedOutlinedButtonColors(
+                    isActive,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                 ),
                 modifier = Modifier
-                    .focusRequester(focusRequester)
-                    .focusable(),
+                    .focusRequester(focusRequester),
+                interactionSource = interactionSource,
                 onClick = it
             ) {
                 Text(text = stringResource(id = R.string.retry))
             }
 
             LaunchedEffect(Unit) {
-                if (isAndroidTV) {
-                    focusRequester.requestFocus()
-                }
+                focusRequester.requestFocus()
             }
         }
     }
@@ -839,10 +1075,10 @@ private fun VideoSideSheet(
     if (playerState.isSpeedUiVisible.value) {
         SpeedSideSheet(
             selectedSpeedIndex,
-            onSpeedClick = { index, (speedText, speed) ->
+            onSpeedClick = { index, option ->
                 selectedSpeedIndex = index
-                playerState.setSpeedText(if (index == 3) "倍速" else speedText)
-                playerState.control.setPlaybackSpeed(speed)
+                playerState.setSpeedText(if (index == 3) "倍速" else option.label)
+                playerState.control.setPlaybackSpeed(option.value)
             }, onDismissRequest = { playerState.hideSpeedUi() }
         )
     }
@@ -850,10 +1086,10 @@ private fun VideoSideSheet(
     if (playerState.isResizeUiVisible.value) {
         ResizeSideSheet(
             selectedResizeIndex = selectedResizeIndex,
-            onResizeClick = { index, (resizeText, resizeMode) ->
+            onResizeClick = { index, option ->
                 selectedResizeIndex = index
-                playerState.setResizeText(resizeText)
-                playerState.control.setVideoResize(resizeMode)
+                playerState.setResizeText(option.label)
+                playerState.control.setVideoResize(option.value)
             }, onDismissRequest = { playerState.hideResizeUi() }
         )
     }
@@ -862,7 +1098,11 @@ private fun VideoSideSheet(
         var selectedEpisodeIndex by remember(video.currentEpisodeIndex) { mutableIntStateOf(video.currentEpisodeIndex) }
         EpisodeSideSheet(
             episodes = video.episodes,
-            selectedEpisodeIndex = selectedEpisodeIndex,
+            channels = video.channels,
+            channelIndex = video.channelIndex,
+            playingEpisodeUrl = video.episodeUrl,
+            focusIndex = selectedEpisodeIndex,
+            onChannelClick = { channelIndex -> viewModel.switchChannel(channelIndex) },
             onEpisodeClick = { index, episode ->
                 playerState.control.pause()
                 playerState.setLoading(true)
@@ -883,35 +1123,50 @@ private fun VideoSideSheet(
 @Composable
 private fun SpeedSideSheet(
     selectedSpeedIndex: Int,
-    onSpeedClick: (Int, Pair<String, Float>) -> Unit,
+    onSpeedClick: (Int, SideSheetOption<Float>) -> Unit,
     onDismissRequest: () -> Unit
 ) {
-    val speeds = remember { Speeds.reversedArray() }
-
-    SideSheet(onDismissRequest = onDismissRequest, widthRatio = 0.2f) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            speeds.forEachIndexed { index, speed ->
-                AdaptiveTextButton(
-                    text = speed.first,
-                    modifier = Modifier.size(MediumTextButtonSize),
-                    onClick = { onSpeedClick(index, speed) },
-                    color = if (selectedSpeedIndex == index) MaterialTheme.colorScheme.primary else Color.LightGray,
-                )
-            }
-        }
-    }
+    val speeds = remember { Speeds.reversed() }
+    SelectableSideSheet(
+        options = speeds,
+        selectedIndex = selectedSpeedIndex,
+        // 不传 itemModifier：按钮按内容自适应宽度（最小 42dp），
+        // 避免 "1.25X"/"0.75X" 被截断成 "1.2..."/"0.7..."
+        onClick = onSpeedClick,
+        onDismissRequest = onDismissRequest,
+    )
 }
 
 @Composable
 private fun ResizeSideSheet(
     selectedResizeIndex: Int,
-    onResizeClick: (Int, Pair<String, ResizeMode>) -> Unit,
+    onResizeClick: (Int, SideSheetOption<ResizeMode>) -> Unit,
     onDismissRequest: () -> Unit
 ) {
+    SelectableSideSheet(
+        options = Resizes,
+        selectedIndex = selectedResizeIndex,
+        itemModifier = Modifier.size(MediumTextButtonSize),
+        onClick = onResizeClick,
+        onDismissRequest = onDismissRequest,
+    )
+}
+
+/**
+ * 倍速/显示比例共用的侧栏：一列等分布局的可聚焦按钮，首个按钮自动取焦，
+ * Back 键关闭。文案由 [SideSheetOption.label] 提供，样式差异通过 [itemModifier] 传入。
+ */
+@Composable
+private fun <T> SelectableSideSheet(
+    options: List<SideSheetOption<T>>,
+    selectedIndex: Int,
+    onClick: (Int, SideSheetOption<T>) -> Unit,
+    onDismissRequest: () -> Unit,
+    itemModifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    BackHandler { onDismissRequest() }
 
     SideSheet(onDismissRequest = onDismissRequest, widthRatio = 0.2f) {
         Column(
@@ -919,75 +1174,257 @@ private fun ResizeSideSheet(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Resizes.forEachIndexed { index, resize ->
+            options.forEachIndexed { index, option ->
                 AdaptiveTextButton(
-                    text = resize.first,
-                    modifier = Modifier.size(MediumTextButtonSize),
-                    onClick = { onResizeClick(index, resize) },
-                    color = if (selectedResizeIndex == index) MaterialTheme.colorScheme.primary else Color.LightGray,
+                    text = option.label,
+                    modifier = itemModifier
+                        .then(if (index == 0) Modifier.focusRequester(focusRequester) else Modifier),
+                    onClick = { onClick(index, option) },
+                    color = if (selectedIndex == index) MaterialTheme.colorScheme.primary else Color.LightGray,
+                    fontWeight = if (selectedIndex == index) FontWeight.Bold else null,
                 )
             }
         }
     }
+
+    LaunchedEffect(Unit) {
+        runCatching { focusRequester.requestFocus() }
+    }
 }
+
+// 线路 tab 与集数按钮共用的边框/颜色：active=聚焦或按压，secondary=选中或播放
+@Composable
+private fun channelBorderStroke(active: Boolean, secondary: Boolean): BorderStroke {
+    val primary = MaterialTheme.colorScheme.primary
+    return BorderStroke(
+        1.0.dp,
+        if (active || secondary) primary else MaterialTheme.colorScheme.outline.copy(0.5f)
+    )
+}
+
+@Composable
+private fun channelButtonColors(active: Boolean, secondary: Boolean) =
+    ButtonDefaults.outlinedButtonColors(
+        containerColor = if (active) MaterialTheme.colorScheme.primary else Color.Transparent,
+        contentColor = when {
+            active -> MaterialTheme.colorScheme.onPrimary
+            secondary -> MaterialTheme.colorScheme.primary
+            else -> Color.LightGray
+        }
+    )
 
 @Composable
 private fun EpisodeSideSheet(
     episodes: List<Episode>,
-    selectedEpisodeIndex: Int,
+    channels: Map<Int, List<Episode>>,
+    channelIndex: Int,
+    playingEpisodeUrl: String,
+    focusIndex: Int,
+    onChannelClick: (Int) -> Unit,
     onEpisodeClick: (Int, Episode) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
-    val isAndroidTV = remember { isAndroidTV(context) }
+    // 稳定焦点请求器：打开侧栏或切换线路后主动夺焦
+    val selectedFocusRequester = remember { FocusRequester() }
+    val channelListState = rememberLazyListState()
+    // 待聚焦的集数 index：首帧为 focusIndex（打开即聚焦播放集），左/右切线路时设为同 index
+    var pendingFocusIndex by remember { mutableStateOf<Int?>(focusIndex) }
+    // UP 键从第一集跳转到当前线路 tab 的待聚焦标记（null = 无）
+    var pendingTabFocusIndex by remember { mutableStateOf<Int?>(null) }
+    // 当前聚焦的集数 index（左/右切线路后保持同 index）
+    var focusedEpisodeIndex by remember { mutableIntStateOf(focusIndex) }
+    // 当前线路 tab 的焦点请求器（UP 键从集数列表聚焦到它）
+    val channelFocusRequester = remember { FocusRequester() }
+
+    // 正在播放的集数在当前线路列表中的 index（不在当前线路则为 -1）
+    val playingIndex = episodes.indexOfFirst { it.url == playingEpisodeUrl }
+    // 正在播放的线路 index（跨所有线路查找）
+    val playingChannelIndex = channels.entries
+        .firstOrNull { (_, eps) -> eps.any { it.url == playingEpisodeUrl } }
+        ?.key ?: -1
+    // 焦点目标：左/右切线路后保持同 index，否则为默认 focusIndex
+    val targetFocusIndex = (pendingFocusIndex ?: focusIndex)
+        .coerceIn(0, (episodes.size - 1).coerceAtLeast(0))
+
     SideSheet(onDismissRequest = onDismissRequest, widthRatio = 0.38f) {
 
-        LazyColumn(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            state = rememberLazyListState(selectedEpisodeIndex, -200)
-        ) {
-            itemsIndexed(episodes) { index, episode ->
-                val focusRequester = remember { FocusRequester() }
-                var isFocused by remember { mutableStateOf(false) }
-                val selected = index == selectedEpisodeIndex
-
-                OutlinedButton(
-                    onClick = { onEpisodeClick(index, episode) },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(
-                        1.0.dp,
-                        if (selected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline.copy(0.5f)
-                    ),
+        Column(Modifier.fillMaxSize()) {
+            if (channels.size > 1) {
+                LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .onFocusChanged(onFocusChanged = { isFocused = it.isFocused })
-                        .focusRequester(focusRequester)
-                        .focusable()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    state = channelListState
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        if (selected) {
-                            EpisodePlaybackIndicator(Modifier.align(Alignment.CenterStart))
+                    items(channels.size) { index ->
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isFocused by interactionSource.collectIsFocusedAsState()
+                        val isPressed by interactionSource.collectIsPressedAsState()
+                        val isActive = isFocused || isPressed
+                        val selected = index == channelIndex
+                        val isPlayingChannel = index == playingChannelIndex
+
+                        OutlinedButton(
+                            onClick = { onChannelClick(index) },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(4.dp),
+                            border = channelBorderStroke(isActive, selected),
+                            colors = channelButtonColors(isActive, selected),
+                            // 焦点在 tab 上时：左右切换 tab 并同步切换线路，焦点保持在 tab 上
+                            modifier = Modifier
+                                .then(
+                                    if (index == channelIndex) {
+                                        Modifier.focusRequester(channelFocusRequester)
+                                    } else Modifier
+                                )
+                                .onFocusChanged {
+                                    if (it.isFocused && index != channelIndex) onChannelClick(index)
+                                },
+                            interactionSource = interactionSource
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                // 左侧 15dp 空位（播放指示图标位置）
+                                Box(
+                                    modifier = Modifier
+                                        .width(15.dp)
+                                        .height(16.dp),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (isPlayingChannel) {
+                                        EpisodePlaybackIndicator(
+                                            tint = if (isActive) MaterialTheme.colorScheme.onPrimary
+                                                   else MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = stringResource(R.string.channel_number, index + 1),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 1
+                                )
+                                // 右侧 15dp 空位，与左侧对称
+                                Spacer(Modifier.width(15.dp))
+                            }
                         }
-
-                        Text(
-                            text = episode.name,
-                            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-                }
-
-                LaunchedEffect(selected) {
-                    if (selected && isAndroidTV) {
-                        focusRequester.requestFocus()
                     }
                 }
             }
+
+            // 切换线路后让选中标签滚动到可见位置
+            LaunchedEffect(channelIndex) {
+                if (channels.size > 1) {
+                    channelListState.animateScrollToItem(channelIndex.coerceAtLeast(0))
+                }
+            }
+
+            key(channelIndex) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp)
+                        // 焦点在集数列表时：左/右快速切换线路并聚焦同 index；第一集 UP 聚焦播放线路 tab
+                        .onPreviewKeyEvent { event ->
+                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (event.key) {
+                                Key.DirectionLeft -> {
+                                    if (channelIndex > 0) {
+                                        pendingFocusIndex = focusedEpisodeIndex
+                                        onChannelClick(channelIndex - 1)
+                                    }
+                                    true
+                                }
+                                Key.DirectionRight -> {
+                                    if (channelIndex < channels.size - 1) {
+                                        pendingFocusIndex = focusedEpisodeIndex
+                                        onChannelClick(channelIndex + 1)
+                                    }
+                                    true
+                                }
+                                Key.DirectionUp -> {
+                                    // 仅在第一集时 UP 聚焦当前显示线路的 tab；否则交给正常纵向导航
+                                    if (focusedEpisodeIndex == 0 && channels.size > 1) {
+                                        pendingTabFocusIndex = channelIndex
+                                        true
+                                    } else false
+                                }
+                                else -> false
+                            }
+                        },
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    state = rememberLazyListState(targetFocusIndex, -200)
+                ) {
+                    itemsIndexed(episodes) { index, episode ->
+                        val focusRequester = remember { FocusRequester() }
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isFocused by interactionSource.collectIsFocusedAsState()
+                        val isPressed by interactionSource.collectIsPressedAsState()
+                        val isActive = isFocused || isPressed
+                        // 播放指示：通过 URL 匹配当前线路中正在播放的集数（切走再切回仍正确）
+                        val isPlaying = index == playingIndex
+                        val isFocusTarget = index == targetFocusIndex
+
+                        OutlinedButton(
+                            onClick = { onEpisodeClick(index, episode) },
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                            shape = RoundedCornerShape(4.dp),
+                            border = channelBorderStroke(isActive, isPlaying),
+                            colors = channelButtonColors(isActive, isPlaying),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { if (it.isFocused) focusedEpisodeIndex = index }
+                                .then(
+                                    if (isFocusTarget) {
+                                        Modifier.focusRequester(selectedFocusRequester)
+                                    } else Modifier
+                                ),
+                            interactionSource = interactionSource
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                if (isPlaying) {
+                                    EpisodePlaybackIndicator(
+                                        Modifier.align(Alignment.CenterStart),
+                                        tint = if (isActive) MaterialTheme.colorScheme.onPrimary
+                                               else MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Text(
+                                    text = episode.name,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 1,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 打开侧栏聚焦播放中的集数；左/右切线路聚焦同 index；tab 切线路时 pending 已为 null 不夺焦
+    LaunchedEffect(channelIndex) {
+        delay(200)
+        if (pendingFocusIndex != null) {
+            runCatching { selectedFocusRequester.requestFocus() }
+        }
+        pendingFocusIndex = null
+    }
+
+    // UP 键从第一集跳转当前线路 tab：先滚动到可见，再延迟夺焦
+    LaunchedEffect(pendingTabFocusIndex) {
+        if (pendingTabFocusIndex != null) {
+            channelListState.animateScrollToItem(channelIndex.coerceAtLeast(0))
+            delay(100)
+            runCatching { channelFocusRequester.requestFocus() }
+            pendingTabFocusIndex = null
         }
     }
 }
@@ -1003,12 +1440,12 @@ fun PreviewEEpisodePlaybackIndicator() {
 }
 
 @Composable
-fun EpisodePlaybackIndicator(modifier: Modifier = Modifier) {
-    BouncingBarsAnimation(modifier)
+fun EpisodePlaybackIndicator(modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.primary) {
+    BouncingBarsAnimation(modifier, tint)
 }
 
 @Composable
-private fun BouncingBarsAnimation(modifier: Modifier = Modifier) {
+private fun BouncingBarsAnimation(modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.primary) {
     val transition = rememberInfiniteTransition(label = "BouncingBars")
     val barWidth = 3.dp
     val maxHeight = 16.dp
@@ -1016,7 +1453,6 @@ private fun BouncingBarsAnimation(modifier: Modifier = Modifier) {
     val barSpacing = 2.dp
     val durationMs = 800
     val startOffset = durationMs / 3
-    val barColor = MaterialTheme.colorScheme.primary
 
     Row(
         modifier = modifier,
@@ -1044,7 +1480,7 @@ private fun BouncingBarsAnimation(modifier: Modifier = Modifier) {
                 width = barWidth,
                 maxHeight = maxHeight,
                 minHeight = minHeight,
-                color = barColor
+                color = tint
             )
         }
     }

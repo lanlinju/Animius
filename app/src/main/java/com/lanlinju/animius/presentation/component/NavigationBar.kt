@@ -15,12 +15,16 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -35,6 +39,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import java.util.Locale
 import com.lanlinju.animius.R as Res
+import com.lanlinju.animius.util.focus.rememberIsFocused
 
 @Deprecated("Use AdaptiveNavigationBar instead")
 @Composable
@@ -142,11 +147,20 @@ fun AdaptiveNavigationBar(
         NavigationRail(modifier) {
             destinations.forEachIndexed { index, destination ->
                 val selected = destination.route == currentDestination
+                val (isFocused, focusModifier) = rememberIsFocused()
                 NavigationRailItem(
-                    selected = selected,
+                    selected = selected || isFocused,
                     onClick = { onNavigateToDestination(index) },
                     icon = destination.icon,
-                    label = { Text(destination.route) }, // 可选：添加标签
+                    label = { Text(destination.route) },
+                    colors = if (isFocused)
+                        NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            indicatorColor = MaterialTheme.colorScheme.primary
+                        )
+                    else NavigationRailItemDefaults.colors(),
+                    modifier = focusModifier
                 )
             }
         }
@@ -155,11 +169,20 @@ fun AdaptiveNavigationBar(
         NavigationBar(modifier) {
             destinations.forEachIndexed { index, destination ->
                 val selected = destination.route == currentDestination
+                val (isFocused, focusModifier) = rememberIsFocused()
                 NavigationBarItem(
-                    selected = selected,
+                    selected = selected || isFocused,
                     onClick = { onNavigateToDestination(index) },
                     icon = destination.icon,
                     label = { Text(destination.label()) },
+                    colors = if (isFocused)
+                        NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            indicatorColor = MaterialTheme.colorScheme.primary
+                        )
+                    else NavigationBarItemDefaults.colors(),
+                    modifier = focusModifier
                 )
             }
         }

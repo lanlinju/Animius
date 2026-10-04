@@ -20,13 +20,16 @@ jobs:
 
       # Set up JDK 17
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # 不再用 android-actions/setup-android：镜像已预装本项目需要的 SDK
+      # (ANDROID_HOME/cmdline-tools 12.0/platforms;android-36/build-tools 36.0.0)且已接受许可。
+      # 该 action 会因为版本与本镜像不符而自行下载固定版本的 cmdline-tools，
+      # 而 Google 已将这些 zip 下架 → 下载 404，整个 job 在构建前就挂掉。
+      # 即使在最新版 v4 上同样如此，上游 issue：android-actions/setup-android#536。
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4

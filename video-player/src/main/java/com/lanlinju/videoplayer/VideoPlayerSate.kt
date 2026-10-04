@@ -36,8 +36,8 @@ fun rememberVideoPlayerState(
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     config: ExoPlayer.Builder.() -> Unit = {
         setLoadControl(loadControlCreator())
-        setSeekForwardIncrementMs(15 * 1000)
-        setSeekBackIncrementMs(15 * 1000)
+        setSeekForwardIncrementMs(10 * 1000)
+        setSeekBackIncrementMs(10 * 1000)
     }
 ): VideoPlayerState = remember {
     VideoPlayerStateImpl(
@@ -64,10 +64,16 @@ class VideoPlayerStateImpl(
     private val hideControllerAfterMs: Long,
     private val videoPositionPollInterval: Long,
 ) : VideoPlayerState, Player.Listener {
+    private val seekHideAfterMs = 1500L
+    private var hideAfterMs = hideControllerAfterMs
     override val videoSize = mutableStateOf(player.videoSize)
     override val videoResizeMode = mutableStateOf(ResizeMode.Fit)
     override val videoPositionMs = mutableStateOf(0L)
     override val videoDurationMs = mutableStateOf(0L)
+    override val mediaSizeBytes = mutableStateOf<Long?>(null)
+    override val isMediaSizeProbed = mutableStateOf(false)
+    override val measuredBitrateBps = mutableStateOf<Long?>(null)
+    override val isSegmentBitrateSource = mutableStateOf(false)
 
     override val isFullscreen = mutableStateOf(true)
     override val isPlaying = mutableStateOf(player.isPlaying)
@@ -100,9 +106,10 @@ class VideoPlayerStateImpl(
     override val onSeeking: (Float) -> Unit
         get() = {
             controlUiLastInteractionMs = 0
-            isSeeking.value = true
             isEnded.value = false
             if (!isControlUiVisible.value) showControlUi()
+            isSeeking.value = true
+            hideAfterMs = seekHideAfterMs
             this.videoProgress.value = it
         }
 
@@ -111,8 +118,11 @@ class VideoPlayerStateImpl(
      */
     override val onSeeked: () -> Unit
         get() = {
-            isSeeking.value = false
             player.seekTo((player.duration * videoProgress.value).toLong())
+            // Don't reset isSeeking — keep compact overlay during fade-out.
+            // isSeeking is reset in showControlUi() when UI is shown again.
+            hideAfterMs = seekHideAfterMs
+            controlUiLastInteractionMs = 0
         }
 
     /**
@@ -124,6 +134,27 @@ class VideoPlayerStateImpl(
             isEnded.value = false
             this.videoProgress.value = progress
             player.seekTo((player.duration * videoProgress.value).toLong())
+        }
+
+    /**
+     * D-pad LEFT/RIGHT with hidden UI: seek by skipMs, show compact overlay (isSeeking=true
+     * hides header + playback), use short 1.5s auto-hide timer. isSeeking is NOT reset here —
+     * it stays true until showControlUi() is called next, so the compact overlay fades out
+     * directly without flashing to full UI.
+     */
+    override val onTimedSeek: (Long) -> Unit
+        get() = { skipMs ->
+            val duration = videoDurationMs.value
+            if (duration > 0) {
+                val newPos = (player.currentPosition + skipMs).coerceIn(0, duration)
+                val progress = newPos.toFloat() / duration
+                if (!isControlUiVisible.value) showControlUi()
+                isSeeking.value = true
+                hideAfterMs = seekHideAfterMs
+                controlUiLastInteractionMs = 0
+                this.videoProgress.value = progress
+                player.seekTo(newPos)
+            }
         }
 
     override fun onChangeVolume(value: Float) {
@@ -204,6 +235,34 @@ class VideoPlayerStateImpl(
 
     override fun setLoading(loading: Boolean) {
         isLoading.value = loading
+        // 新的加载开始（选集/切线路/下一集/连播）时清除播放错误，
+        // 否则加载圈会被 isError 阻塞，失败图标残留
+        if (loading) isError.value = false
+    }
+
+    /** HLS 的码率一律由分片级统计提供,不看清单里的 BANDWIDTH,见 [SegmentBitrateMeter] */
+    private val segmentBitrateMeter = SegmentBitrateMeter()
+
+    init {
+        player.addAnalyticsListener(segmentBitrateMeter)
+    }
+
+    override fun resetMediaSizeProbe() {
+        mediaSizeBytes.value = null
+        isMediaSizeProbed.value = false
+    }
+
+    /** bytes 为 null 表示探测结论是"拿不到长度",不是"还没测" */
+    override fun setMediaSize(bytes: Long?) {
+        mediaSizeBytes.value = bytes
+        isMediaSizeProbed.value = true
+    }
+
+    override fun setSegmentBitrateSource(useSegments: Boolean) {
+        segmentBitrateMeter.isEnabled = useSegments
+        isSegmentBitrateSource.value = useSegments
+        // 换集/换线路后,旧视频的分片不能再算进去
+        segmentBitrateMeter.reset()
     }
 
     private var pollVideoPositionJob: Job? = null
@@ -212,6 +271,8 @@ class VideoPlayerStateImpl(
     override fun hideControlUi() {
         controlUiLastInteractionMs = 0
         isControlUiVisible.value = false
+        // Don't reset isSeeking here — keep compact overlay during fade-out so
+        // the full UI doesn't flash. isSeeking is reset in showControlUi() instead.
         pollVideoPositionJob?.cancel()
         pollVideoPositionJob = null
     }
@@ -219,6 +280,10 @@ class VideoPlayerStateImpl(
     override fun showControlUi() {
         controlUiLastInteractionMs = 0
         isControlUiVisible.value = true
+        // Reset to full UI mode: isSeeking=false (show header + playback), 6s auto-hide timer.
+        // onSeeking/onTimedSeek will override these to compact overlay + 1.5s timer after calling us.
+        isSeeking.value = false
+        hideAfterMs = hideControllerAfterMs
         pollVideoPositionJob?.cancel()
         pollVideoPositionJob = coroutineScope.launch {
             while (true) {
@@ -233,10 +298,13 @@ class VideoPlayerStateImpl(
                             player.bufferedPosition / videoDurationMs.value.toFloat()
                     }
                 }
+                // 实测码率只给 HLS 用(HLS 一律显示实测值,不看清单里的声明码率),
+                // 跟着控制栏刷新即可,控制栏隐藏时不用算
+                segmentBitrateMeter.bitrateBps?.let { measuredBitrateBps.value = it }
                 controlUiLastInteractionMs += videoPositionPollInterval
 
                 delay(videoPositionPollInterval)
-                if (controlUiLastInteractionMs >= hideControllerAfterMs) {
+                if (controlUiLastInteractionMs >= hideAfterMs) {
                     hideControlUi()
                     break
                 }
@@ -287,6 +355,10 @@ class VideoPlayerStateImpl(
         isEpisodeUiVisible.value = false
     }
 
+    override fun onUserInteraction() {
+        controlUiLastInteractionMs = 0
+    }
+
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         this.isPlaying.value = isPlaying
     }
@@ -295,7 +367,10 @@ class VideoPlayerStateImpl(
         if (playbackState == Player.STATE_READY) videoDurationMs.value = player.duration
         this.playbackState.value = playbackState
         when (playbackState) {
-            Player.STATE_IDLE -> Unit
+            Player.STATE_IDLE -> { // 换集/换线路:缓冲区已清空,旧视频的统计值也必须丢掉
+                segmentBitrateMeter.reset()
+                measuredBitrateBps.value = null
+            }
             Player.STATE_BUFFERING -> isLoading.value = true
             Player.STATE_READY -> isLoading.value = false
             Player.STATE_ENDED -> isEnded.value = true
@@ -404,6 +479,10 @@ interface VideoPlayerState {
     val videoResizeMode: State<ResizeMode>
     val videoPositionMs: State<Long>    /*当控制组件显示时才会更新这个值，获取视频当前进度用player.currentPosition*/
     val videoDurationMs: State<Long>    /*视频时长*/
+    val mediaSizeBytes: State<Long?>    /*文件大小:远程用HEAD取Content-Length,本地读文件长度;HLS等拿不到时为null*/
+    val isMediaSizeProbed: State<Boolean>    /*大小探测是否已结束:未结束时 mediaSizeBytes 的 null 只代表"还没测完"*/
+    val measuredBitrateBps: State<Long?>    /*实测码率(分片级,最近30秒媒体),仅控制栏显示时更新;HLS 首片落地前为null*/
+    val isSegmentBitrateSource: State<Boolean>    /*播放源是HLS:码率一律读分片级实测值,不看清单里的 BANDWIDTH*/
 
     val isFullscreen: State<Boolean>
     val isPlaying: State<Boolean>
@@ -423,6 +502,7 @@ interface VideoPlayerState {
     val onSeeking: (dragProcess: Float) -> Unit     // 当拖动进度条时调用
     val onSeeked: () -> Unit                        // 当拖动进度条结束时调用
     val onClickSlider: (progress: Float) -> Unit // 当点击进度条时调用
+    val onTimedSeek: (skipMs: Long) -> Unit // D-pad LEFT/RIGHT: seek + compact overlay + short hide timer
 
     val speedText: State<String>
     val resizeText: State<String>
@@ -435,6 +515,13 @@ interface VideoPlayerState {
     val control: VideoPlayerControl
 
     fun setLoading(loading: Boolean)
+
+    /** 开始新一轮大小探测:先清空,避免换集时沿用上一集的结论 */
+    fun resetMediaSizeProbe()
+    fun setMediaSize(bytes: Long?)
+
+    /** 播放源是 HLS 时置 true,让码率改读分片级统计 */
+    fun setSegmentBitrateSource(useSegments: Boolean)
 
     fun onChangeVolume(value: Float)
     fun onChangeBrightness(value: Float)
@@ -463,6 +550,8 @@ interface VideoPlayerState {
 
     fun showEpisodeUi()
     fun hideEpisodeUi()
+
+    fun onUserInteraction()
 }
 
 interface VideoPlayerControl {

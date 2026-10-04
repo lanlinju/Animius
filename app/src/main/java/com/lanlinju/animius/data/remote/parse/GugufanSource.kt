@@ -92,33 +92,86 @@ class GugufanSource : AnimeSource {
     }
 
     override suspend fun getVideoData(episodeUrl: String): VideoBean {
-        val nestedUrl = getVideoUrl("${baseUrl}/$episodeUrl")
-        val document = getDocument(nestedUrl)
-        val data = document.body().select("script").last()!!.data()
-        val videoUrl = extractUrlWithRegex(data)
-        val headers = createHeaders(videoUrl)
+        // 播放页: player_aaaa.url = vwnet-<hash> yunjie token
+        // 通过 yunjie 解析 API 获取真实 m3u8,或 WebView 嗅探兜底
+        val playPage = if (episodeUrl.startsWith("http")) episodeUrl else "$baseUrl${episodeUrl.removePrefix("/")}"
+        val videoUrl = getVideoUrlFromPage(playPage)
+        val headers = createHeaders()
         return VideoBean(videoUrl, headers)
     }
 
-    private fun createHeaders(videoUrl: String): Map<String, String> {
-        return if (videoUrl.contains("m3u8"))
-            emptyMap()
-        else
-            mapOf("Referer" to baseUrl, "User-Agent" to DefaultUserAgent)
-    }
-
-    fun extractUrlWithRegex(input: String): String {
-        val regex = """，*"url"\s*:\s*"(https?://[^"]+)",.*""".toRegex()
-        return regex.find(input)?.groupValues?.get(1) ?: error("Failed to extract Url")
-    }
-
-    private suspend fun getVideoUrl(url: String): String {
+    private suspend fun getVideoUrlFromPage(playPage: String): String {
+        // 1. 解析播放页,提取 player_aaaa 对象中的 url(yunjie token,如 vwnet-xxx)
+        val source = DownloadManager.getHtml(playPage)
+        val token = extractPlayerAaaaUrl(source)
+        if (!token.isNullOrBlank() && !token.startsWith("http")) {
+            // 2. GET 播放器页面(带 Referer + Sec-Fetch 头),提取 time/key/vkey
+            val playerHtml = runCatching {
+                DownloadManager.getHtml(
+                    "https://player.gugu3.com/?url=$token",
+                    mapOf(
+                        "Referer" to baseUrl,
+                        "Sec-Fetch-Dest" to "iframe",
+                        "Sec-Fetch-Mode" to "navigate",
+                        "Sec-Fetch-Site" to "same-site"
+                    )
+                )
+            }.getOrNull()
+            if (!playerHtml.isNullOrBlank()) {
+                val time = Regex("\"time\"\\s*:\\s*\"?([0-9]+)\"?").find(playerHtml)?.groupValues?.get(1)
+                val key = Regex("\"key\"\\s*:\\s*\"([^\"]*)\"").find(playerHtml)?.groupValues?.get(1)
+                val vkey = Regex("\"vkey\"\\s*:\\s*\"([^\"]*)\"").find(playerHtml)?.groupValues?.get(1)
+                if (time != null && vkey != null) {
+                    // 3. POST mizhi_json.php 获取真实 m3u8
+                    val apiJson = DownloadManager.postForm(
+                        url = "https://player.gugu3.com/admin/mizhi_json.php",
+                        form = mapOf(
+                            "url" to token,
+                            "time" to time,
+                            "key" to (key ?: ""),
+                            "vkey" to vkey
+                        ),
+                        headers = mapOf(
+                            "Accept" to "application/json, text/javascript, */*; q=0.01",
+                            "X-Requested-With" to "XMLHttpRequest",
+                            "Origin" to "https://player.gugu3.com",
+                            "Referer" to "https://player.gugu3.com/?url=$token"
+                        )
+                    )
+                    // 提取 json.url 中的 m3u8/mp4
+                    // 处理转义斜杠: https:\/\/xxx 或 https:\/\/xxx\/yyy
+                    val decodedJson = apiJson.replace("\\/", "/")
+                    Regex("\"url\"\\s*:\\s*\"(https?://[^\"]+)\"").find(decodedJson)?.groupValues?.get(1)
+                        ?.let { return it }
+                    Regex("https?://[^\"'\\s]+\\.(?:m3u8|mp4)(?:[?#][^\"'\\s]*)?")
+                        .find(decodedJson)?.value?.let { return it }
+                }
+            }
+        }
+        // 4. 兜底:WebView 嗅探 m3u8/mp4
         return webViewUtil.interceptRequest(
-            url = url,
-            regex = "player/dp\\.php\\?key=",
+            url = playPage,
+            regex = ".*\\.(m3u8|mp4|flv|mkv).*(\\?.*)?$",
             userAgent = DefaultUserAgent,
-            timeoutMs = 20_000
+            timeoutMs = 30_000
         )
+    }
+
+    /** 从播放页 HTML 提取 player_aaaa 对象中的 url 字段 */
+    private fun extractPlayerAaaaUrl(html: String): String? {
+        // 先定位 player_aaaa 对象
+        val start = html.indexOf("player_aaaa")
+        if (start == -1) return null
+        val paSub = html.substring(start, (start + 5000).coerceAtMost(html.length))
+        return Regex("\"url\"\\s*:\\s*\"([^\"]+)\"").find(paSub)?.groupValues?.get(1)
+    }
+
+    private fun createHeaders(): Map<String, String> {
+        // 曾经对 m3u8 返回 emptyMap():因为 headers 非空时播放器走 setMediaSource(),
+        // 而当时 mediaSourceCreator 固定用 ProgressiveMediaSource,无法解析 HLS。
+        // 该 bug 已在 video-player 修复(m3u8 改用 HlsMediaSource),
+        // 因此不再需要这个特例,统一带 Referer/UA(部分 CDN 需要 UA 才放行)。
+        return mapOf("Referer" to baseUrl, "User-Agent" to DefaultUserAgent)
     }
 
     override suspend fun getSearchData(

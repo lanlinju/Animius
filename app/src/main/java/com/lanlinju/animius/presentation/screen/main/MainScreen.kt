@@ -47,7 +47,7 @@ fun MainScreen(
     val pagerState = rememberPagerState(initialPage = 1) { NavigationBarPath.entries.size }
     val scope = rememberCoroutineScope()
 
-    val configuration = LocalConfiguration.current // 屏幕方向改变会触发 recompose
+    val configuration = LocalConfiguration.current
     val context = LocalContext.current
 
     // 在屏幕方向变化时更新 isWideScreen

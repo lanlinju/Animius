@@ -15,13 +15,15 @@ data class DownloadWithDownloadDetails(
     )
     val downloadDetails: List<DownloadDetailEntity>
 ) {
-    fun toDownload(): Download {
+    /** 数据源已被移除时返回 null，由调用方过滤掉。 */
+    fun toDownload(): Download? {
+        val sourceMode = SourceMode.fromName(download.source) ?: return null
         val totalSize = downloadDetails.fold(0L) { acc, d -> acc + d.fileSize }
         return Download(
             title = download.title,
             detailUrl = download.detailUrl,
             imgUrl = download.imgUrl,
-            sourceMode = SourceMode.valueOf(download.source),
+            sourceMode = sourceMode,
             totalSize = totalSize,
             downloadDetails = downloadDetails.map { it.toDownloadDetail() }
         )

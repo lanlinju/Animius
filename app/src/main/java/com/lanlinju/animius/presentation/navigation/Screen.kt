@@ -27,7 +27,7 @@ sealed class Screen {
     object DanmakuSettings : Screen()
 
     @Serializable
-    data class DownloadDetail(val detailUrl: String, val title: String) : Screen()
+    data class DownloadDetail(val detailUrl: String, val title: String, val sourceMode: SourceMode) : Screen()
 
     @Serializable
     data class AnimeDetail(val detailUrl: String, val mode: SourceMode) : Screen()
@@ -43,6 +43,8 @@ data class PlayerParameters(
     val episodes: List<Episode>,    /* 剧集列表 */
     val mode: SourceMode?,           /* 来源 */
     val isLocalVideo: Boolean = false,   /* 是否为本地视频 */
+    val channels: Map<Int, List<Episode>> = emptyMap(), /* 多线路剧集 */
+    val channelIndex: Int = 0,      /* 当前线路索引 */
 ) {
     companion object {
         suspend fun serialize(
@@ -50,7 +52,9 @@ data class PlayerParameters(
             episodeIndex: Int,
             episodes: List<Episode>,
             mode: SourceMode? = null,
-            isLocalVideo: Boolean = false
+            isLocalVideo: Boolean = false,
+            channels: Map<Int, List<Episode>> = emptyMap(),
+            channelIndex: Int = 0
         ): String {
             return Json.encodeToString(
                 PlayerParameters(
@@ -59,6 +63,8 @@ data class PlayerParameters(
                     episodes,
                     mode,
                     isLocalVideo,
+                    channels,
+                    channelIndex,
                 )
             )
         }

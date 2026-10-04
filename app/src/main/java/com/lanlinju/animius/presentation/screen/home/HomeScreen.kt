@@ -4,12 +4,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,11 +40,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -78,11 +79,15 @@ import com.lanlinju.animius.presentation.component.TranslucentStatusBarLayout
 import com.lanlinju.animius.presentation.component.WarningMessage
 import com.lanlinju.animius.util.KEY_HOME_BACKGROUND_URI
 import com.lanlinju.animius.util.KEY_USE_GRID_LAYOUT
+import com.lanlinju.animius.util.SettingsPreferences
 import com.lanlinju.animius.util.SourceHolder
 import com.lanlinju.animius.util.SourceMode
+import com.lanlinju.animius.presentation.screen.week.SourceSwitchDialog
 import com.lanlinju.animius.util.bannerParallax
 import com.lanlinju.animius.util.isWideScreen
 import com.lanlinju.animius.util.rememberPreference
+import com.lanlinju.animius.util.focus.focusedIconButtonColors
+import com.lanlinju.animius.util.focus.rememberIsFocused
 import kotlinx.coroutines.launch
 import com.lanlinju.animius.R as Res
 
@@ -93,11 +98,11 @@ fun HomeScreen(
 ) {
     val homeViewModel = hiltViewModel<HomeViewModel>()
     val availableDataList = homeViewModel.homeDataList.collectAsState()
+    val isSourceChanged by SourceHolder.isSourceChanged.collectAsState()
 
-    LaunchedEffect(SourceHolder.isSourceChanged) {
-        if (SourceHolder.isSourceChanged) {
+    LaunchedEffect(isSourceChanged) {
+        if (isSourceChanged > 0) {
             homeViewModel.refresh()
-            SourceHolder.isSourceChanged = false
         }
     }
 
@@ -243,7 +248,7 @@ private fun GridLayoutTabs(
             GridCells.Fixed(3)
         }
         LazyVerticalGrid(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().focusGroup(),
             columns = columns,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -268,27 +273,39 @@ private fun Tab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
+    val (isFocused, focusModifier) = rememberIsFocused()
+    Surface(
+        onClick = onClick,
         modifier = modifier
             .padding(8.dp)
-            .background(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(11.dp)
-            )
-            .clip(RoundedCornerShape(11.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .then(focusModifier),
+        shape = RoundedCornerShape(20.dp),
+        color = when {
+            isFocused -> MaterialTheme.colorScheme.primary
+            selected -> MaterialTheme.colorScheme.onSurface
+            else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        },
+        contentColor = when {
+            isFocused -> MaterialTheme.colorScheme.onPrimary
+            selected -> MaterialTheme.colorScheme.surface
+            else -> MaterialTheme.colorScheme.onBackground
+        },
     ) {
-        Text(
-            text = text(),
-//            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.align(Alignment.Center)
-        )
+        Box(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = text(),
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
     }
 }
 
 @Composable
 fun getBlendedBackgroundColor(): Color {
+    val pureBackground by SettingsPreferences.pureBackground.collectAsState()
+    if (pureBackground) return MaterialTheme.colorScheme.background
     return Color(
         ColorUtils.blendARGB(
             MaterialTheme.colorScheme.background.toArgb(),
@@ -373,10 +390,9 @@ fun HomeBackground(
                 .offset(y = offsetY)
                 .align(Alignment.BottomStart),
             useGridLayout = useGridLayout,
-            onSwitchGridLayout = onSwitchLayout
-        ) {
-            launcher.launch(arrayOf("image/*"))
-        }
+            onSwitchGridLayout = onSwitchLayout,
+            onClick = { launcher.launch(arrayOf("image/*")) }
+        )
     }
 }
 
@@ -388,52 +404,75 @@ private fun HomeTile(
     onClick: () -> Unit = {},
 ) {
     val isWideScreen = isWideScreen(LocalContext.current)
+    var showSourceSwitchDialog by remember { mutableStateOf(false) }
+    var currentSourceName by remember { mutableStateOf(SourceHolder.currentSourceMode.name) }
+    val (isSourceFocused, sourceFocusModifier) = rememberIsFocused()
     Row(
         modifier = modifier
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .padding(
                     start = dimensionResource(Res.dimen.large_padding),
-                    bottom = if (!isWideScreen) dimensionResource(Res.dimen.medium_padding) else 0.dp
-                )
+                    top = if (isWideScreen) 8.dp else 64.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy((-8).dp)
         ) {
             if (!isWideScreen) {
+                val (animeFocused, animeFocusModifier) = rememberIsFocused()
+                Surface(
+                    onClick = onClick,
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (animeFocused) MaterialTheme.colorScheme.primary
+                    else Color.Transparent,
+                    modifier = animeFocusModifier
+                ) {
+                    Text(
+                        text = stringResource(Res.string.lbl_anime),
+                        color = if (animeFocused) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            Surface(
+                onClick = { showSourceSwitchDialog = true },
+                shape = RoundedCornerShape(20.dp),
+                color = if (isSourceFocused) MaterialTheme.colorScheme.primary
+                else Color.Transparent,
+                modifier = sourceFocusModifier
+            ) {
                 Text(
-                    text = stringResource(Res.string.lbl_anime),
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    style = MaterialTheme.typography.displayMedium,
-                    modifier = Modifier.clickable { onClick() }
+                    text = currentSourceName,
+                    color = if (isSourceFocused) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
-            Text(
-                text = SourceHolder.currentSourceMode.name,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(y = 8.dp)
-                    .padding(vertical = if (isWideScreen && useGridLayout) 8.dp else 0.dp)
-                    .run {
-                        if (isWideScreen) {
-                            // 获取焦点
-                            clickable { }
-                        } else this
-                    }
-            )
         }
 
         if (!isWideScreen) {
             LayoutTypeSelector(
                 modifier = Modifier
-                    .padding(end = 24.dp, bottom = 16.dp),
+                    .padding(end = 24.dp, top = 88.dp, bottom = 16.dp),
                 checked = useGridLayout,
                 onCheckedChange = { onSwitchGridLayout(it) }
             )
         }
+    }
+    if (showSourceSwitchDialog) {
+        SourceSwitchDialog(
+            onDismissRequest = { showSourceSwitchDialog = false },
+            onSourceChanged = { mode ->
+                currentSourceName = mode.name
+                SourceHolder.isSourceChanged.value++
+            }
+        )
     }
 }
 
@@ -508,20 +547,23 @@ private fun LayoutTypeSelector(
         ) {
             repeat(2) { index ->
                 val selectedIndex = if (!checked) 0 else 1
+                val (isFocused, focusModifier) = rememberIsFocused()
                 IconButton(
                     onClick = { if (selectedIndex != index) onCheckedChange?.invoke(!checked) },
-                    modifier = Modifier.requiredWidth(dimensionResource(Res.dimen.media_type_choice_size))
+                    modifier = Modifier
+                        .requiredWidth(dimensionResource(Res.dimen.media_type_choice_size))
+                        .then(focusModifier),
+                    colors = focusedIconButtonColors(isFocused)
                 ) {
                     Icon(
                         imageVector = if (index == 0) Icons.Rounded.PlayArrow else ImageVector.vectorResource(
                             id = Res.drawable.manga
                         ),
-                        tint = animateColorAsState(
-                            targetValue = if (selectedIndex == index) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.background,
-                            animationSpec = tween(400),
-                            label = "icon_color"
-                        ).value,
+                        tint = when {
+                            isFocused -> MaterialTheme.colorScheme.onPrimary
+                            selectedIndex == index -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.background
+                        },
                         contentDescription = null,
                     )
                 }

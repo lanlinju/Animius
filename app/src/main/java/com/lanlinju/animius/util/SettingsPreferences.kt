@@ -24,6 +24,9 @@ object SettingsPreferences {
     private val _dynamicColor = MutableStateFlow(preferences.getBoolean(KEY_DYNAMIC_COLOR, false))
     val dynamicColor = _dynamicColor.asStateFlow()
 
+    private val _pureBackground = MutableStateFlow(preferences.getBoolean(KEY_PURE_BACKGROUND, false))
+    val pureBackground = _pureBackground.asStateFlow()
+
 
     fun changeThemeMode(themeMode: ThemeMode) {
         _themeMode.value = themeMode
@@ -42,5 +45,10 @@ object SettingsPreferences {
     fun changeDynamicColor(dynamicTheme: Boolean) {
         _dynamicColor.value = dynamicTheme
         preferences.edit { putBoolean(KEY_DYNAMIC_COLOR, dynamicTheme) }
+    }
+
+    fun changePureBackground(pureBackground: Boolean) {
+        _pureBackground.value = pureBackground
+        preferences.edit { putBoolean(KEY_PURE_BACKGROUND, pureBackground) }
     }
 }

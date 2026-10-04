@@ -22,8 +22,8 @@ class FavouriteDaoTest {
     private lateinit var favouriteDao: FavouriteDao
     private lateinit var animeDatabase: AnimeDatabase
 
-    private var favourite1 = FavouriteEntity(1, "海贼王1", "/video1", "img1", SourceMode.Yhdm.name)
-    private var favourite2 = FavouriteEntity(2, "海贼王2", "/video2", "img2", SourceMode.Yhdm.name)
+    private var favourite1 = FavouriteEntity(1, "海贼王1", "/video1", "img1", SourceMode.Silisili.name)
+    private var favourite2 = FavouriteEntity(2, "海贼王2", "/video2", "img2", SourceMode.Silisili.name)
 
     @Before
     fun createDb() {

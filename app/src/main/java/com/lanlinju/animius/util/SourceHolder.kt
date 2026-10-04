@@ -1,5 +1,6 @@
 package com.lanlinju.animius.util
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.lanlinju.animius.application.AnimeApplication
 import com.lanlinju.animius.data.remote.parse.AgedmSource
 import com.lanlinju.animius.data.remote.parse.AnimeSource
@@ -7,12 +8,8 @@ import com.lanlinju.animius.data.remote.parse.CycanimeSource
 import com.lanlinju.animius.data.remote.parse.GirigiriSource
 import com.lanlinju.animius.data.remote.parse.GogoanimeSource
 import com.lanlinju.animius.data.remote.parse.GugufanSource
-import com.lanlinju.animius.data.remote.parse.MxdmSource
-import com.lanlinju.animius.data.remote.parse.NtdmSource
-import com.lanlinju.animius.data.remote.parse.NyafunSource
 import com.lanlinju.animius.data.remote.parse.SilisiliSource
 import com.lanlinju.animius.data.remote.parse.XifanSource
-import com.lanlinju.animius.data.remote.parse.YhdmSource
 
 object SourceHolder {
     private lateinit var _currentSource: AnimeSource
@@ -29,7 +26,7 @@ object SourceHolder {
     val currentSourceMode: SourceMode
         get() = _currentSourceMode
 
-    var isSourceChanged = false
+    val isSourceChanged = MutableStateFlow(0)
 
     init {
         val preferences = AnimeApplication.getInstance().preferences
@@ -62,18 +59,13 @@ object SourceHolder {
      * */
     fun getSource(mode: SourceMode): AnimeSource {
         return when (mode) {
-            SourceMode.Yhdm -> YhdmSource
             SourceMode.Silisili -> SilisiliSource
-            SourceMode.Mxdm -> MxdmSource
             SourceMode.Agedm -> AgedmSource
-//            SourceMode.Anfuns -> AnfunsSource
             SourceMode.Girigiri -> GirigiriSource
-            SourceMode.Nyafun -> NyafunSource
             SourceMode.Cycanime -> CycanimeSource
-            SourceMode.Gogoanime -> GogoanimeSource
             SourceMode.Xifan -> XifanSource()
-            SourceMode.Ntdm -> NtdmSource()
             SourceMode.Gugufan -> GugufanSource()
+            SourceMode.Gogoanime -> GogoanimeSource
         }
     }
 }
@@ -84,12 +76,16 @@ enum class SourceMode {
     Girigiri,
     Cycanime,
     Gugufan,
-    Mxdm,
     Xifan,
-    Ntdm,
-    Nyafun,
+    Gogoanime;
 
-    //    Anfuns,
-    Gogoanime,
-    Yhdm
+    companion object {
+        /**
+         * 按名字查找数据源，名字已不存在时返回 null 而不是抛异常。
+         *
+         * 收藏/历史/下载表里存的是枚举名，删掉数据源后老记录会留下失效名字，
+         * 直接用 [valueOf] 读会抛 IllegalArgumentException 把整个列表一起打挂。
+         */
+        fun fromName(name: String): SourceMode? = entries.firstOrNull { it.name == name }
+    }
 }

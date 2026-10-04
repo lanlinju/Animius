@@ -3,6 +3,9 @@ package com.lanlinju.animius.presentation.screen.week
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,10 +44,14 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -64,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -99,6 +107,10 @@ import com.lanlinju.animius.util.TABS
 import com.lanlinju.animius.util.isAndroidTV
 import com.lanlinju.animius.util.isWideScreen
 import com.lanlinju.animius.util.rememberPreference
+import com.lanlinju.animius.util.focus.focusBorder
+import com.lanlinju.animius.util.focus.focusedIconButtonColors
+import com.lanlinju.animius.util.focus.focusedTextButtonColors
+import com.lanlinju.animius.util.focus.rememberIsFocused
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -119,6 +131,14 @@ fun WeekScreen(
     var showSourceSwitchDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showDomainChangeDialog by remember { mutableStateOf(false) }
+    var currentSourceName by remember { mutableStateOf(SourceHolder.currentSourceMode.name) }
+    val isSourceChanged by SourceHolder.isSourceChanged.collectAsState()
+
+    LaunchedEffect(isSourceChanged) {
+        if (isSourceChanged > 0) {
+            viewModel.refresh()
+        }
+    }
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -132,19 +152,29 @@ fun WeekScreen(
         Column {
             TopAppBar(
                 title = {
-                    Column(modifier = Modifier.clickable {
-                        showSourceSwitchDialog = true
-                    }) {
-                        Text(
-                            text = stringResource(id = R.string.lbl_schedule),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            text = SourceHolder.currentSourceMode.name,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                    val (titleFocused, titleModifier) = rememberIsFocused()
+                    Surface(
+                        onClick = { showSourceSwitchDialog = true },
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (titleFocused) MaterialTheme.colorScheme.primary
+                        else Color.Transparent,
+                        modifier = titleModifier
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)) {
+                            Text(
+                                text = stringResource(id = R.string.lbl_schedule),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = if (titleFocused) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = currentSourceName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (titleFocused) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
-
                 },
                 actions = {
                     AppBarAction(
@@ -166,10 +196,25 @@ fun WeekScreen(
                 selectedTabIndex = pagerState.currentPage,
             ) {
                 TABS.forEachIndexed { index, title ->
+                    val (tabFocused, tabModifier) = rememberIsFocused()
                     Tab(
-                        text = { Text(text = title) },
+                        text = {
+                            Text(
+                                text = title,
+                                color = if (tabFocused) MaterialTheme.colorScheme.onPrimary
+                                else LocalContentColor.current
+                            )
+                        },
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.scrollToPage(index) } },
+                        selectedContentColor = if (tabFocused) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = if (tabFocused) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = tabModifier.then(
+                            if (tabFocused) Modifier.background(MaterialTheme.colorScheme.primary)
+                            else Modifier
+                        )
                     )
                 }
             }
@@ -224,6 +269,7 @@ fun WeekScreen(
             onDownloadUpdate = { lifecycleOwner ->
                 viewModel.downloadVersionUpdate(context, lifecycleOwner)
             },
+            onSourceChanged = { mode -> currentSourceName = mode.name },
         )
     }
 
@@ -286,10 +332,26 @@ fun WeekItem(
     onClick: () -> Unit
 ) {
 
+    val cardShape = RoundedCornerShape(12.dp)
+
     ElevatedCard(
-        modifier = modifier.height(80.dp),
+        modifier = modifier
+            .height(80.dp)
+            .focusBorder(
+                shape = cardShape,
+                width = 3.dp,
+                focusedColor = MaterialTheme.colorScheme.primary,
+            ),
         onClick = onClick,
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.5.dp)
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            focusedElevation = 0.dp,
+            hoveredElevation = 0.dp,
+            draggedElevation = 0.dp,
+            disabledElevation = 0.dp,
+        ),
+        shape = cardShape,
     ) {
         Box(
             modifier = Modifier
@@ -333,10 +395,17 @@ private fun AppBarAction(
     )
 
     Box {
-        IconButton(onClick = { menuExpanded = true }) {
+        val (moreFocused, moreModifier) = rememberIsFocused()
+        IconButton(
+            onClick = { menuExpanded = true },
+            colors = focusedIconButtonColors(moreFocused),
+            modifier = moreModifier
+        ) {
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
-                contentDescription = stringResource(id = R.string.more)
+                contentDescription = stringResource(id = R.string.more),
+                tint = if (moreFocused) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurface
             )
         }
 
@@ -360,25 +429,46 @@ private fun AppBarNavigation(
     onNavigateToSearch: () -> Unit,
     onNavigateToDownload: () -> Unit
 ) {
-    IconButton(onClick = onNavigateToHistory) {
+    val (historyFocused, historyModifier) = rememberIsFocused()
+    IconButton(
+        onClick = onNavigateToHistory,
+        colors = focusedIconButtonColors(historyFocused),
+        modifier = historyModifier
+    ) {
         Icon(
             painter = painterResource(id = R.drawable.ic_history),
-            contentDescription = stringResource(id = R.string.history)
+            contentDescription = stringResource(id = R.string.history),
+            tint = if (historyFocused) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface
         )
     }
 
-    IconButton(onClick = onNavigateToSearch) {
+    val (searchFocused, searchModifier) = rememberIsFocused()
+    IconButton(
+        onClick = onNavigateToSearch,
+        colors = focusedIconButtonColors(searchFocused),
+        modifier = searchModifier
+    ) {
         Icon(
             imageVector = Icons.Rounded.Search,
-            contentDescription = stringResource(id = R.string.search)
+            contentDescription = stringResource(id = R.string.search),
+            tint = if (searchFocused) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface
         )
     }
 
-    IconButton(onClick = onNavigateToDownload) {
+    val (downloadFocused, downloadModifier) = rememberIsFocused()
+    IconButton(
+        onClick = onNavigateToDownload,
+        colors = focusedIconButtonColors(downloadFocused),
+        modifier = downloadModifier
+    ) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
             modifier = Modifier.rotate(90f),
-            contentDescription = stringResource(id = R.string.download_list)
+            contentDescription = stringResource(id = R.string.download_list),
+            tint = if (downloadFocused) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -436,25 +526,41 @@ private fun DropdownMenu(
     )
     DropdownMenu(expanded = expanded, onDismissRequest = onDismissMenu) {
         menuItems.forEach { item ->
+            val (itemFocused, itemModifier) = rememberIsFocused()
             DropdownMenuItem(
-                text = { Text(stringResource(id = item.textId)) },
+                text = {
+                    Text(
+                        text = stringResource(id = item.textId),
+                        color = if (itemFocused) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface
+                    )
+                },
                 onClick = {
                     onDismissMenu()
                     item.action()
                 },
+                modifier = itemModifier
+                    .then(
+                        if (itemFocused) Modifier.background(MaterialTheme.colorScheme.primary)
+                        else Modifier
+                    ),
                 leadingIcon = {
                     item.icon?.let { icon ->
                         Icon(
                             imageVector = icon,
                             modifier = Modifier.rotate(item.iconRotation),
-                            contentDescription = stringResource(id = item.textId)
+                            contentDescription = stringResource(id = item.textId),
+                            tint = if (itemFocused) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurface
                         )
                     }
                     item.iconPainter?.let { iconPainter ->
                         Icon(
                             modifier = Modifier.size(24.dp),
                             painter = iconPainter,
-                            contentDescription = stringResource(id = item.textId)
+                            contentDescription = stringResource(id = item.textId),
+                            tint = if (itemFocused) MaterialTheme.colorScheme.onPrimary
+                            else LocalContentColor.current
                         )
                     }
                 }
@@ -487,11 +593,12 @@ fun Dialogs(
     onDismissLoadingIndicationDialog: () -> Unit,
     onDownloadUpdate: (LifecycleOwner) -> Unit,
     onRefresh: () -> Unit,
+    onSourceChanged: (SourceMode) -> Unit = {}
 ) {
     if (showSourceSwitchDialog) {
         SourceSwitchDialog(
             onDismissRequest = onDismissSourceSwitchDialog,
-            onRefresh = onRefresh
+            onSourceChanged = onSourceChanged
         )
     }
     if (showSettingsDialog) {
@@ -547,12 +654,22 @@ fun VersionUpdateDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDownloadUpdate(lifecycleOwner) }) {
+            val (isFocused, focusModifier) = rememberIsFocused()
+            TextButton(
+                onClick = { onDownloadUpdate(lifecycleOwner) },
+                modifier = Modifier.then(focusModifier),
+                colors = focusedTextButtonColors(isFocused)
+            ) {
                 Text(text = stringResource(id = R.string.download_software))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissUpdateDialog) {
+            val (isFocused, focusModifier) = rememberIsFocused()
+            TextButton(
+                onClick = onDismissUpdateDialog,
+                modifier = Modifier.then(focusModifier),
+                colors = focusedTextButtonColors(isFocused)
+            ) {
                 Text(text = stringResource(id = R.string.cancel))
             }
         }
@@ -579,13 +696,23 @@ private fun LoadingIndicationDialog(
             }
         },
         confirmButton = {},
+        dismissButton = {
+            val (isFocused, focusModifier) = rememberIsFocused()
+            TextButton(
+                onClick = onDismissRequest,
+                modifier = Modifier.then(focusModifier),
+                colors = focusedTextButtonColors(isFocused)
+            ) {
+                Text(text = stringResource(id = R.string.cancel))
+            }
+        }
     )
 }
 
 @Composable
-private fun SourceSwitchDialog(
+fun SourceSwitchDialog(
     onDismissRequest: () -> Unit,
-    onRefresh: () -> Unit
+    onSourceChanged: (SourceMode) -> Unit = {}
 ) {
     var currentSourceMode by rememberPreference(KEY_SOURCE_MODE, DEFAULT_ANIME_SOURCE)
 
@@ -608,9 +735,10 @@ private fun SourceSwitchDialog(
                 radioOptions.forEachIndexed { index, text ->
                     val topCorner = if (index == 0) 24.dp else 4.dp
                     val bottomCorner = if (index == radioOptions.lastIndex) 24.dp else 4.dp
+                    val (rowFocused, rowModifier) = rememberIsFocused()
 
                     Row(
-                        Modifier
+                        rowModifier
                             .fillMaxWidth()
                             .height(dimensionResource(id = R.dimen.radio_button_height))
                             .clip(
@@ -621,10 +749,20 @@ private fun SourceSwitchDialog(
                                     bottomEnd = bottomCorner
                                 )
                             )
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .background(
+                                if (rowFocused) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
                             .selectable(
                                 selected = (text == selectedOption),
-                                onClick = { onOptionSelected(text) },
+                                onClick = {
+                                    val mode = SourceMode.valueOf(text)
+                                    currentSourceMode = mode
+                                    SourceHolder.isSourceChanged.value++
+                                    SourceHolder.switchSource(mode)
+                                    onSourceChanged(mode)
+                                    onDismissRequest()
+                                },
                                 role = Role.RadioButton
                             )
                             .padding(start = dimensionResource(id = R.dimen.large_padding)),
@@ -637,29 +775,23 @@ private fun SourceSwitchDialog(
                         Text(
                             text = text,
                             style = MaterialTheme.typography.bodyLarge,
+                            color = if (rowFocused) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(start = dimensionResource(id = R.dimen.medium_padding))
                         )
                     }
                 }
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val mode = SourceMode.valueOf(selectedOption)
-                    currentSourceMode = mode            // 保存默认源到偏好设置
-                    SourceHolder.isSourceChanged = true // 触发Home数据刷新
-                    SourceHolder.switchSource(mode)     // 切换数据源
-                    onDismissRequest()                  // 关闭Dialog
-                    onRefresh()                         // Week页面重新获取数据
-                }
-            ) {
-                Text(stringResource(R.string.confirm))
-            }
-        },
+        confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(stringResource(R.string.cancel))
+            val (isFocused, focusModifier) = rememberIsFocused()
+            TextButton(
+                onClick = onDismissRequest,
+                modifier = Modifier.then(focusModifier),
+                colors = focusedTextButtonColors(isFocused)
+            ) {
+                Text(text = stringResource(id = R.string.cancel))
             }
         }
     )
@@ -701,9 +833,15 @@ private fun SettingsDialog(
                     onCheckedChange = { isDownloadDirEnabled = it }
                 )
 
+                val interactionSource = remember { MutableInteractionSource() }
+                val isFocused by interactionSource.collectIsFocusedAsState()
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val isActive = isFocused || isPressed
                 TextButton(
                     modifier = Modifier.align(Alignment.End),
-                    onClick = onDismissRequest
+                    onClick = onDismissRequest,
+                    interactionSource = interactionSource,
+                    colors = focusedTextButtonColors(isActive)
                 ) {
                     Text(stringResource(R.string.close))
                 }
@@ -718,23 +856,32 @@ private fun SettingsItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        Modifier
+    val (isFocused, focusModifier) = rememberIsFocused()
+    ListItem(
+        modifier = Modifier
             .fillMaxWidth()
-            .height(dimensionResource(id = R.dimen.radio_button_height)),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-    }
+            .height(dimensionResource(id = R.dimen.radio_button_height))
+            .then(focusModifier)
+            .clickable { onCheckedChange(!checked) },
+        colors = ListItemDefaults.colors(
+            containerColor = if (isFocused) MaterialTheme.colorScheme.surfaceVariant
+            else Color.Transparent
+        ),
+        headlineContent = {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isFocused) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface
+            )
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
+        }
+    )
 }
 
 @Composable
@@ -800,21 +947,36 @@ private fun DomainChangeDialog(
 
         },
         confirmButton = {
-            TextButton(onClick = {
-                if (text.isNotEmpty()) {
-                    currentDomain = text
-                    SourceHolder.isSourceChanged = true
-                    SourceHolder.currentSource.baseUrl = currentDomain
-                    onDismissRequest(true)
-                } else {
-                    onDismissRequest(false)
-                }
-            }) {
+            val interactionSource = remember { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val isActive = isFocused || isPressed
+            TextButton(
+                onClick = {
+                    if (text.isNotEmpty()) {
+                        currentDomain = text
+                        SourceHolder.currentSource.baseUrl = currentDomain
+                        onDismissRequest(true)
+                    } else {
+                        onDismissRequest(false)
+                    }
+                },
+                interactionSource = interactionSource,
+                colors = focusedTextButtonColors(isActive)
+            ) {
                 Text(text = stringResource(id = R.string.confirm))
             }
         },
         dismissButton = {
-            TextButton(onClick = { onDismissRequest(false) }) {
+            val interactionSource = remember { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val isActive = isFocused || isPressed
+            TextButton(
+                onClick = { onDismissRequest(false) },
+                interactionSource = interactionSource,
+                colors = focusedTextButtonColors(isActive)
+            ) {
                 Text(text = stringResource(id = R.string.cancel))
             }
         }

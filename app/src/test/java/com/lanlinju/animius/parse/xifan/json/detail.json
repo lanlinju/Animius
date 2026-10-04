@@ -1,0 +1,232 @@
+{
+ "anime": {
+  "id": 3294,
+  "title": "欺诈游戏",
+  "title_original": "LIAR GAME",
+  "cover_url": "https://img2.cycimg.me/r/800/pic/cover/l/55/50/580133_4AttU.jpg",
+  "description": "一天突然收到了一个小包裹。在当中有着写着“恭喜你。你从十万分之一的概率当中，入选了欺诈游戏”的信，以及一亿日圆现金。而那就是欺诈游戏的开始。在30天后的游戏结束日，要归还自身所持的一亿日圆。规则就只有这些。顺利夺走对战对象所持金钱的胜利者就能获得一亿日圆，失败者就要背负一亿日圆的债务……谁是可信的，谁是不可信的……将在巨额金钱面前动摇的，人类的心理描绘得淋漓尽致的问题作！",
+  "format": "tv",
+  "region": "日本",
+  "remarks": "周二00:30",
+  "meta_tags": [
+   "TV",
+   "日本",
+   "推理",
+   "漫画改",
+   "青年向"
+  ],
+  "release_year": 2026,
+  "release_date": "2026-04-06",
+  "bangumi_score": 6.0,
+  "total_episodes": 26,
+  "current_episodes": 26,
+  "is_finished": true,
+  "season_number": null,
+  "series_id": null,
+  "director": "川野麻美",
+  "actors": [
+   "土屋圭",
+   "杉山晋史"
+  ],
+  "view_count": 12308,
+  "cast": [
+   {
+    "person_name": "上田燿司",
+    "character_name": "谷村光男",
+    "person_source_id": 4920,
+    "character_relation": "配角",
+    "character_source_id": 203774
+   },
+   {
+    "person_name": "中谷一博",
+    "character_name": "レロニラ",
+    "person_source_id": 25582,
+    "character_relation": "配角",
+    "character_source_id": 44937
+   }
+  ],
+  "staff": [
+   {
+    "role_label": "音响制作担当",
+    "person_name": "井口泰一",
+    "person_type": 1,
+    "episode_scope": null,
+    "person_source_id": 97804
+   },
+   {
+    "role_label": "录音工作室",
+    "person_name": "STUDIO T&T",
+    "person_type": 2,
+    "episode_scope": null,
+    "person_source_id": 83150
+   }
+  ]
+ },
+ "related": [
+  {
+   "id": 3463,
+   "title": "赌徒银行",
+   "format": "tv",
+   "cover_url": "https://img2.cycimg.me/pic/cover/l/b4/9d/634142_RqkCR.jpg",
+   "is_finished": false,
+   "release_year": 2026,
+   "bangumi_score": 9.0,
+   "total_episodes": 12,
+   "current_episodes": 0
+  },
+  {
+   "id": 315,
+   "title": "死亡笔记",
+   "format": "tv",
+   "cover_url": "https://img2.cycimg.me/r/800/pic/cover/l/4a/be/1773_rldoC.jpg",
+   "is_finished": true,
+   "release_year": 2006,
+   "bangumi_score": 8.4,
+   "total_episodes": 37,
+   "current_episodes": 37
+  },
+  {
+   "id": 1718,
+   "title": "来自深渊 烈日的黄金乡",
+   "format": "tv",
+   "cover_url": "https://img2.cycimg.me/r/800/pic/cover/l/ae/18/298477_eBaQ8.jpg",
+   "is_finished": true,
+   "release_year": 2022,
+   "bangumi_score": 8.3,
+   "total_episodes": 12,
+   "current_episodes": 12
+  }
+ ],
+ "sources": [
+  {
+   "id": 4,
+   "code": "xfxf1",
+   "name": "稀饭新番主线-1",
+   "episodes": [
+    {
+     "id": 47887,
+     "kind": "main",
+     "title": "传说的欺诈师",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-06",
+     "episode_number": 1.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 47888,
+     "kind": "main",
+     "title": "动摇",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-13",
+     "episode_number": 2.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 47889,
+     "kind": "main",
+     "title": "定局",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-20",
+     "episode_number": 3.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 202126,
+     "kind": "main",
+     "title": "抉择",
+     "available_at": "2026-09-28T17:18:09.681961+00:00",
+     "release_date": "2026-09-28",
+     "episode_number": 26.0,
+     "stale_update_eligible_at": "2026-10-07"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "code": "AL",
+   "name": "稀饭新番主线-2",
+   "episodes": [
+    {
+     "id": 47887,
+     "kind": "main",
+     "title": "传说的欺诈师",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-06",
+     "episode_number": 1.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 47888,
+     "kind": "main",
+     "title": "动摇",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-13",
+     "episode_number": 2.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 47889,
+     "kind": "main",
+     "title": "定局",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-20",
+     "episode_number": 3.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 202126,
+     "kind": "main",
+     "title": "抉择",
+     "available_at": "2026-09-28T17:18:09.681961+00:00",
+     "release_date": "2026-09-28",
+     "episode_number": 26.0,
+     "stale_update_eligible_at": "2026-10-07"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "code": "CS",
+   "name": "稀饭备用-1",
+   "episodes": [
+    {
+     "id": 47887,
+     "kind": "main",
+     "title": "传说的欺诈师",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-06",
+     "episode_number": 1.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 47888,
+     "kind": "main",
+     "title": "动摇",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-13",
+     "episode_number": 2.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 47889,
+     "kind": "main",
+     "title": "定局",
+     "available_at": "2026-06-02T15:08:36.90087+00:00",
+     "release_date": "2026-04-20",
+     "episode_number": 3.0,
+     "stale_update_eligible_at": "2026-06-10"
+    },
+    {
+     "id": 202126,
+     "kind": "main",
+     "title": "抉择",
+     "available_at": "2026-09-28T17:18:09.681961+00:00",
+     "release_date": "2026-09-28",
+     "episode_number": 26.0,
+     "stale_update_eligible_at": "2026-10-07"
+    }
+   ]
+  }
+ ],
+ "series_seasons": []
+}

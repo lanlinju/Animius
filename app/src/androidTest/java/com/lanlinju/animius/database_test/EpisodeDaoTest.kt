@@ -25,7 +25,7 @@ class EpisodeDaoTest {
     private lateinit var historyDao: HistoryDao
     private lateinit var animeDatabase: AnimeDatabase
 
-    private var history1 = HistoryEntity(1, "海贼王1", "img1", "/video1", SourceMode.Yhdm.name)
+    private var history1 = HistoryEntity(1, "海贼王1", "img1", "/video1", SourceMode.Silisili.name)
 
     @Before
     fun createDb() {

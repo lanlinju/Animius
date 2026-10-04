@@ -23,9 +23,9 @@ class DownloadDaoTest {
     private lateinit var animeDatabase: AnimeDatabase
 
     private var download1 =
-        DownloadEntity(1, "海贼王1", "/detailUrl1", "/imgUrl1", SourceMode.Yhdm.name, System.currentTimeMillis())
+        DownloadEntity(1, "海贼王1", "/detailUrl1", "/imgUrl1", SourceMode.Silisili.name, System.currentTimeMillis())
     private var download2 =
-        DownloadEntity(2, "海贼王2", "/detailUrl2", "/imgUrl2", SourceMode.Yhdm.name, System.currentTimeMillis())
+        DownloadEntity(2, "海贼王2", "/detailUrl2", "/imgUrl2", SourceMode.Silisili.name, System.currentTimeMillis())
 
     @Before
     fun createDb() {

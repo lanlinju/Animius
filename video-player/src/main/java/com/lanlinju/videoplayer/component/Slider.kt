@@ -3,9 +3,14 @@ package com.lanlinju.videoplayer.component
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -20,8 +25,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
@@ -36,16 +49,52 @@ fun Slider(
     color: Color = MaterialTheme.colorScheme.primary,
     trackColor: Color = Color.LightGray.copy(alpha = 0.38f),
     secondTrackColor: Color =Color.LightGray.copy(alpha = 0.78f),
-    isSeeking: Boolean = false
+    isSeeking: Boolean = false,
+    onDpadUpDown: (() -> Unit)? = null,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    durationMs: Long = 0L,
 ) {
     val isAnimHeight = remember(isSeeking) { mutableStateOf(isSeeking) }
     val animHeight = animateDpAsState(
         targetValue = if (isAnimHeight.value) 4.dp else 2.dp,
         animationSpec = tween()
     )
+    var isFocused by remember { mutableStateOf(false) }
+    val isActive = isFocused || isSeeking
+    val thumbSize by animateDpAsState(
+        targetValue = if (isActive) 20.dp else 15.dp,
+        animationSpec = tween(150)
+    )
 
     Box(
         modifier = modifier
+            .focusRequester(focusRequester)
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    val stepFraction = if (durationMs > 0) 10000f / durationMs else 0.02f
+                    when (event.key) {
+                        Key.DirectionRight -> {
+                            onClick((value + stepFraction).coerceIn(0f, 1f))
+                            true
+                        }
+                        Key.DirectionLeft -> {
+                            onClick((value - stepFraction).coerceIn(0f, 1f))
+                            true
+                        }
+                        Key.DirectionUp, Key.DirectionDown -> {
+                            if (isSeeking) {
+                                onDpadUpDown?.invoke()
+                                true
+                            } else {
+                                false // let focus system handle spatial navigation
+                            }
+                        }
+                        else -> false
+                    }
+                } else false
+            }
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { offset ->
                     isAnimHeight.value = true
@@ -110,15 +159,15 @@ fun Slider(
         // thumb
         Box(
             modifier = Modifier
-                .clip(CircleShape)
                 .align(
                     BiasAlignment(
-                        horizontalBias = (value * 2) - 1f, // -1 start | 0 center | 1 end
+                        horizontalBias = (value * 2) - 1f,
                         verticalBias = 0f
                     )
                 )
-                .size(15.dp)
-                .background(color)
+                .size(thumbSize)
+                .then(if (isFocused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
+                .background(color, CircleShape)
         )
     }
 }

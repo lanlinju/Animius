@@ -14,8 +14,6 @@ import org.jsoup.select.Elements
 
 object AgedmSource : AnimeSource {
 
-    private const val LOG_TAG = "AgedmSource"
-
     override val DEFAULT_DOMAIN: String = "https://www.agedm.io/"
 
     override var baseUrl: String = getDefaultDomain()
@@ -136,10 +134,18 @@ object AgedmSource : AnimeSource {
     private suspend fun getVideoUrl(document: Document): String {
 
         val videoUrl = document.select("#iframeForVideo").attr("src")
+        if (videoUrl.isBlank()) throw IllegalStateException("播放页没有解析到播放器地址(iframeForVideo)")
 
         return webViewUtil.interceptRequest(
             url = videoUrl,
-            regex = ".mp4|.m3u8|video|playurl|hsl|obj|bili",
+            // 两种地址形态都要覆盖:
+            //  1. 带扩展名:https://vip.ffzy-plays.com/.../index.m3u8
+            //  2. 不带扩展名:sid=1 走 ByteDance CDN,地址形如
+            //     https://v16.akamaized.net/<hash>/<hash>/video/tos/alisg/<hash>/
+            //     (24 分钟正片,无扩展名,靠 /video/tos/ 路径标识)
+            // 扩展名后面的 (?|#|$) 是必须的:否则 https://jx.wuzhoupai.com:8443/m3u8/?url=...
+            // 这种播放器页地址会被当成媒体地址,把 HTML 交给播放器。
+            regex = "\\.(m3u8|mp4|flv|mkv)(\\?|#|$)|/video/tos/",
         )
     }
 

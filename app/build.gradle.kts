@@ -145,6 +145,10 @@ dependencies {
 
     // test
     testImplementation(libs.junit)
+    // 单测跑在 JVM 上,android.jar 里的 org.json 全是抛异常的桩(未 mock)。
+    // 解析 JSON 的纯函数(各数据源的响应解析)必须能测,故引入真实实现;
+    // AGP 把 mockable android.jar 放在测试 classpath 最后,不会和这里的实现打架。
+    testImplementation(libs.org.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

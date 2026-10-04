@@ -43,16 +43,29 @@ class WebViewUtil {
 
         val regexPattern = regex.toRegex()
         var matchedUrl: String? = null
+        // 入口页面自身的 URL 不参与匹配:本方法加载的"网页"不应被当成视频地址返回,
+        // 否则调用方会拿到一个 HTML 页面交给播放器(报 UnrecognizedInputFormatException)。
+        val entryUrl = url.trimEnd('/')
 
-        webView?.webViewClient = object : BlockedResWebViewClient() {
+        // 幂等匹配:先命中的结果保留,后续请求不再覆盖
+        fun tryMatch(requestUrl: String) {
+            if (matchedUrl != null) return
+            if (requestUrl.trimEnd('/') == entryUrl) {
+                requestUrl.log(LOG_TAG, "Skip entry page url")
+                return
+            }
+            if (requestUrl.contains(regexPattern)) {
+                matchedUrl = requestUrl
+                requestUrl.log(LOG_TAG, "Regex match succeeded")
+            }
+        }
+
+        webView?.webViewClient = object : BlockedResWebViewClient(
+            onRequest = { requestUrl -> tryMatch(requestUrl) }
+        ) {
             override fun onLoadResource(view: WebView?, requestUrl: String) {
-
                 requestUrl.log(LOG_TAG, "InterceptRequest")
-
-                if (requestUrl.contains(regexPattern)) {
-                    matchedUrl = requestUrl
-                    requestUrl.log(LOG_TAG, "Regex match succeeded")
-                }
+                tryMatch(requestUrl)
             }
         }
 
@@ -102,6 +115,12 @@ class WebViewUtil {
 }
 
 abstract class BlockedResWebViewClient(
+    /**
+     * 所有请求的上报回调(在主线程执行)。
+     * Hls.js / dash.js 通过 XHR 拉取播放列表时不会触发 [onLoadResource],
+     * 只在 [shouldInterceptRequest] 才能看到,因此这里一并上报。
+     */
+    private val onRequest: ((String) -> Unit)? = null,
     private val blockRes: Array<String> = arrayOf(
         ".css", ".ts",
         ".mp3", ".m4a",
@@ -124,6 +143,7 @@ abstract class BlockedResWebViewClient(
         request: WebResourceRequest?
     ) = run {
         val url = request?.url?.toString() ?: return null
+        onRequest?.let { callback -> view.post { callback(url) } }
         if (blockRes.any { url.contains(it) }) {
             url.log(LOG_TAG, "BlockedRes")
             view.post { view.webViewClient.onLoadResource(view, url) }

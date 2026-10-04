@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,6 +51,9 @@ import com.lanlinju.animius.util.CROSSFADE_DURATION
 import com.lanlinju.animius.util.LOW_CONTENT_ALPHA
 import com.lanlinju.animius.util.SourceMode
 import com.lanlinju.animius.util.VIDEO_ASPECT_RATIO
+import com.lanlinju.animius.util.focus.focusedIconButtonColors
+import com.lanlinju.animius.util.focus.focusedTextButtonColors
+import com.lanlinju.animius.util.focus.rememberIsFocused
 
 @Composable
 fun HistoryScreen(
@@ -179,8 +183,18 @@ fun HistoryItem(
 fun DeleteHistoryButton(
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick) {
-        Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete")
+    val (isFocused, focusModifier) = rememberIsFocused()
+    IconButton(
+        onClick = onClick,
+        colors = focusedIconButtonColors(isFocused),
+        modifier = focusModifier
+    ) {
+        Icon(
+            Icons.Outlined.DeleteOutline,
+            contentDescription = "Delete",
+            tint = if (isFocused) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -195,15 +209,25 @@ fun DeleteAllHistoriesDialog(
         title = { Text(text = stringResource(R.string.clear_all_histories)) },
         text = { Text(text = stringResource(R.string.are_you_sure_you_want_to_clear_all_histories)) },
         confirmButton = {
-            TextButton(onClick = {
-                onDismissRequest()
-                onDeleteAllHistories()
-            }) {
+            val (isFocused, focusModifier) = rememberIsFocused()
+            TextButton(
+                onClick = {
+                    onDismissRequest()
+                    onDeleteAllHistories()
+                },
+                modifier = Modifier.then(focusModifier),
+                colors = focusedTextButtonColors(isFocused)
+            ) {
                 Text(stringResource(id = R.string.confirm))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            val (isFocused, focusModifier) = rememberIsFocused()
+            TextButton(
+                onClick = onDismissRequest,
+                modifier = Modifier.then(focusModifier),
+                colors = focusedTextButtonColors(isFocused)
+            ) {
                 Text(stringResource(id = R.string.cancel))
             }
         }

@@ -9,6 +9,8 @@ import com.lanlinju.animius.util.DownloadManager
 import com.lanlinju.animius.util.decryptData
 import com.lanlinju.animius.util.getDefaultDomain
 import com.lanlinju.animius.util.log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -16,6 +18,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 
 
 /**
@@ -27,6 +30,18 @@ object SilisiliSource : AnimeSource {
 
     override val DEFAULT_DOMAIN: String = "https://www.silisili.link"
     override var baseUrl = getDefaultDomain()
+
+    /**
+     * 取播放地址用的 POST 客户端。
+     * 复用一个实例(原先每次调用都新建,连接池/线程被反复创建);
+     * 超时对齐 [DownloadManager](30s),原先用 OkHttp 默认的 10s,
+     * 在网络较慢时(模拟器/TV)会误报 SocketTimeoutException。
+     */
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     override suspend fun getHomeData(): List<HomeBean> {
         val headers = mapOf(
@@ -224,8 +239,12 @@ object SilisiliSource : AnimeSource {
         return animeList
     }
 
-    private fun getVideoUrl(url: String): String {
+    private suspend fun getVideoUrl(url: String): String {
         val encryptData = postRequest(url)
+        // 站点偶尔返回空响应,substring 会直接抛 StringIndexOutOfBoundsException
+        if (encryptData.length <= 9) {
+            throw IllegalStateException("播放地址解析失败:站点返回了空响应")
+        }
         val params1 = encryptData.substring(0, 9)
         val params2 = encryptData.substring(9)
 
@@ -235,7 +254,9 @@ object SilisiliSource : AnimeSource {
 
         val result = decryptData(params2, key = key, iv = iv)
         val urlRegex = """"url":"(.*?)",""".toRegex()
-        return urlRegex.find(result)!!.groupValues[1].replace("\\", "")
+        // 站点偶尔会返回错误页/空壳响应,此时不应抛 NPE,给出可读原因
+        return urlRegex.find(result)?.groupValues?.get(1)?.replace("\\", "")
+            ?: throw IllegalStateException("播放地址解析失败:响应中没有 url 字段")
     }
 
     private fun getImgUrl(urlTarget: String): String {
@@ -248,16 +269,16 @@ object SilisiliSource : AnimeSource {
         return DownloadManager.getHtml(url, headerMap)
     }
 
-    private fun postRequest(url: String): String {
-        val client = OkHttpClient.Builder().build()
+    private suspend fun postRequest(url: String): String = withContext(Dispatchers.IO) {
         val body = FormBody.Builder().add("player", "sili").build()
         val request = Request.Builder()
             .url(url)
             .addHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
             .post(body)
             .build()
-        val response = client.newCall(request).execute()
-        return response.body!!.charStream().readText()
+        okHttpClient.newCall(request).execute().use { response ->
+            response.body?.charStream()?.readText().orEmpty()
+        }
     }
 
     /**

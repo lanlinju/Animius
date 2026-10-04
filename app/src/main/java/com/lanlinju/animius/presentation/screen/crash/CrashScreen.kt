@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarDefaults
@@ -26,6 +27,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -47,6 +49,8 @@ import com.lanlinju.animius.presentation.theme.SECONDARY_ALPHA
 import com.lanlinju.animius.presentation.theme.padding
 import com.lanlinju.animius.util.shareCrashLog
 import com.lanlinju.animius.util.toast
+import com.lanlinju.animius.util.focus.focusedOutlinedButtonColors
+import com.lanlinju.animius.util.focus.rememberIsFocused
 import kotlinx.coroutines.launch
 
 @Composable
@@ -146,26 +150,37 @@ fun InfoScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val (acceptFocused, acceptModifier) = rememberIsFocused()
                     Button(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).then(acceptModifier),
                         enabled = canAccept,
                         onClick = onAcceptClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (acceptFocused) MaterialTheme.colorScheme.primary
+                            else ButtonDefaults.buttonColors().containerColor,
+                            contentColor = if (acceptFocused) MaterialTheme.colorScheme.onPrimary
+                            else ButtonDefaults.buttonColors().contentColor
+                        )
                     ) {
                         Text(text = acceptText)
                     }
                     if (onCopyClick != null) {
+                        val (copyFocused, copyModifier) = rememberIsFocused()
                         OutlinedButton(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).then(copyModifier),
                             onClick = onCopyClick,
+                            colors = focusedOutlinedButtonColors(copyFocused)
                         ) {
                             Text(text = logText)
                         }
                     }
                 }
                 if (rejectText != null && onRejectClick != null) {
+                    val (rejectFocused, rejectModifier) = rememberIsFocused()
                     OutlinedButton(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().then(rejectModifier),
                         onClick = onRejectClick,
+                        colors = focusedOutlinedButtonColors(rejectFocused)
                     ) {
                         Text(text = rejectText)
                     }

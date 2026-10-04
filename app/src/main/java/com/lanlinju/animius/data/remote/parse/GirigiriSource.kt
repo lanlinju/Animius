@@ -6,9 +6,8 @@ import com.lanlinju.animius.data.remote.dto.AnimeDetailBean
 import com.lanlinju.animius.data.remote.dto.EpisodeBean
 import com.lanlinju.animius.data.remote.dto.HomeBean
 import com.lanlinju.animius.data.remote.dto.VideoBean
-import com.lanlinju.animius.data.remote.parse.util.CaptchaCookieManager
-import com.lanlinju.animius.data.remote.parse.util.WebViewUtil
 import com.lanlinju.animius.util.DownloadManager
+import com.lanlinju.animius.util.encodeForUrl
 import com.lanlinju.animius.util.getDefaultDomain
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -18,47 +17,37 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 object GirigiriSource : AnimeSource {
 
-    private const val LOG_TAG = "GirigiriSource"
-
     override val DEFAULT_DOMAIN: String = "https://ani.girigirilove.com"
     override var baseUrl: String = getDefaultDomain()
-    private val webViewUtil: WebViewUtil by lazy { WebViewUtil() }
-
-    override fun onExit() {
-        webViewUtil.clearWeb()
-    }
 
     override suspend fun getSearchData(query: String, page: Int): List<AnimeBean> {
-        val searchUrl = "${baseUrl}/search/${query}----------${page}---/"
-
-        // 获取保存的 Cookie
-        val cookies = CaptchaCookieManager.getCookies(CaptchaCookieManager.CUR_KEY_COOKIE)
-        val headers = if (cookies.isNotEmpty()) {
-            mapOf("Cookie" to cookies)
-        } else {
-            emptyMap()
-        }
-
-        val source = DownloadManager.getHtml(searchUrl, headers)
-        val document = Jsoup.parse(source)
-
-        // 检测验证码对话框: button.verify-submit + input[name=verify]
-        val hasCaptcha = document.select("button.verify-submit").isNotEmpty() &&
-                document.select("input[name=verify]").isNotEmpty()
-        if (hasCaptcha) {
-            // Cookie 已失效，清除对应 URL 的 Cookie
-            CaptchaCookieManager.clearCookies(CaptchaCookieManager.CUR_KEY_COOKIE)
-            // 记录需要验证码的 URL
-            CaptchaCookieManager.captchaUrl = searchUrl
-            return emptyList()
-        }
-
+        // HTML 搜索页有 Cloudflare 验证码,改用 maccmsSuggest API(JSON 接口,免验证码)
+        // 该接口没有分页参数,只有第一页:必须显式结束翻页,
+        // 否则 PagingSource 永远拿不到空列表,会不断追加重复条目
+        if (page > 1) return emptyList()
+        val suggestUrl = "${baseUrl}/index.php/ajax/suggest?mid=1&wd=${query.encodeForUrl()}"
+        val source = DownloadManager.getHtml(suggestUrl)
         val animeList = mutableListOf<AnimeBean>()
-        document.select("div.search-list").forEach { el ->
-            val title = el.select("h3").text()
-            val url = el.select("a").first()?.attr("href") ?: ""
-            val imgUrl = el.select("img").attr("data-src").padDomain()
-            animeList.add(AnimeBean(title = title, img = imgUrl, url = url))
+        try {
+            val obj = org.json.JSONObject(source)
+            val list = obj.optJSONArray("list") ?: org.json.JSONArray()
+            for (i in 0 until list.length()) {
+                val item = list.getJSONObject(i)
+                val id = item.optString("id")
+                val title = item.optString("name")
+                val img = item.optString("pic")
+                if (id.isNotBlank() && title.isNotBlank()) {
+                    animeList.add(
+                        AnimeBean(
+                            title = title,
+                            img = img.padDomain(),
+                            url = "/GV$id/"
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            // 解析失败返回空列表
         }
         return animeList
     }

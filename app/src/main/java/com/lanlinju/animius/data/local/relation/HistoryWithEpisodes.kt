@@ -17,7 +17,9 @@ data class HistoryWithEpisodes(
     )
     val episodes: List<EpisodeEntity>
 ) {
-    fun toHistory(): History {
+    /** 数据源已被移除时返回 null，由调用方过滤掉。 */
+    fun toHistory(): History? {
+        val sourceMode = SourceMode.fromName(history.source) ?: return null
         val sortedEpisodes = episodes.sortedByDescending { it.createdAt }
         val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
@@ -27,7 +29,7 @@ data class HistoryWithEpisodes(
             detailUrl = history.detailUrl,
             lastEpisodeName = if (sortedEpisodes.isEmpty()) "" else sortedEpisodes.first().name,
             lastEpisodeUrl = if (sortedEpisodes.isEmpty()) "" else sortedEpisodes.first().episodeUrl,
-            sourceMode = SourceMode.valueOf(history.source),
+            sourceMode = sourceMode,
             time = simpleDateFormat.format(history.updatedAt),
             episodes = emptyList()
         )

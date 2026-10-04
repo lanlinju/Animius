@@ -1,0 +1,30 @@
+{
+ "ok": true,
+ "action": "fallback",
+ "resolved_action": "fallback",
+ "episode_id": 202126,
+ "anime_id": 3294,
+ "url": "https://apn.moedot.net/d/wo/2604/%E6%AC%BA%E8%AF%8826.mp4",
+ "candidates": [
+  {
+   "source_id": 4,
+   "source_code": "xfxf1",
+   "source_name": "稀饭新番主线-1",
+   "url": "https://apn.moedot.net/d/wo/2604/%E6%AC%BA%E8%AF%8826.mp4",
+   "expected_bytes": 370986261
+  },
+  {
+   "source_id": 1,
+   "source_code": "AL",
+   "source_name": "稀饭新番主线-2",
+   "url": "https://play.xfvod.pro:8088/temp/2604/%E6%AC%BA%E8%AF%8826.mp4?sign=347c40dfc9bbaebdce872256ed6d8ae1&t=1791018000",
+   "expected_bytes": 370986261
+  },
+  {
+   "source_id": 2,
+   "source_code": "CS",
+   "source_name": "稀饭备用-1",
+   "url": "https://dl.playxf.top/新番/2604/Q-欺诈游戏/26/欺诈26.m3u8"
+  }
+ ]
+}

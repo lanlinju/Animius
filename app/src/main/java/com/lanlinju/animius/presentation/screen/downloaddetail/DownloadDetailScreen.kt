@@ -2,6 +2,7 @@ package com.lanlinju.animius.presentation.screen.downloaddetail
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -19,12 +20,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,17 +46,22 @@ import coil.request.ImageRequest
 import com.lanlinju.animius.R
 import com.lanlinju.animius.domain.model.Episode
 import com.lanlinju.animius.presentation.component.BackTopAppBar
+import com.lanlinju.animius.presentation.component.DeleteOverlay
 import com.lanlinju.animius.presentation.component.LoadingIndicator
 import com.lanlinju.animius.presentation.component.PopupMenuListItem
 import com.lanlinju.animius.presentation.component.StateHandler
 import com.lanlinju.animius.presentation.navigation.PlayerParameters
 import com.lanlinju.animius.util.CROSSFADE_DURATION
+import com.lanlinju.animius.util.SourceMode
 import com.lanlinju.animius.util.VIDEO_ASPECT_RATIO
+import com.lanlinju.animius.util.focus.focusedTextButtonColors
+import com.lanlinju.animius.util.focus.rememberIsFocused
 import com.lanlinju.animius.util.toast
 import com.lanlinju.download.Progress
 import com.lanlinju.download.core.DownloadTask
 import com.lanlinju.download.download
 import com.lanlinju.download.utils.formatSize
+import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -65,6 +74,7 @@ import com.lanlinju.download.State as DownloadSate
 @Composable
 fun DownloadDetailScreen(
     onNavigateToVideoPlay: (parameters: String) -> Unit,
+    onNavigateToAnimeDetail: (detailUrl: String, mode: SourceMode) -> Unit,
     onBackClick: () -> Unit
 ) {
     val viewModel: DownloadDetailViewModel = hiltViewModel()
@@ -78,10 +88,39 @@ fun DownloadDetailScreen(
         onLoading = { LoadingIndicator() },
         onFailure = { }
     ) { resource ->
+        var isDeleteMode by remember { mutableStateOf(false) }
+        val detailUrlState = viewModel.detailUrl.collectAsState()
+        val sourceModeState = viewModel.sourceMode.collectAsState()
 
         Scaffold(topBar = {
-            BackTopAppBar(title = titleState.value, onBackClick = onBackClick)
+            BackTopAppBar(
+                title = titleState.value,
+                onBackClick = onBackClick,
+                actions = {
+                    val (detailFocused, detailModifier) = rememberIsFocused()
+                    TextButton(
+                        onClick = { onNavigateToAnimeDetail(detailUrlState.value, sourceModeState.value) },
+                        modifier = detailModifier,
+                        colors = focusedTextButtonColors(
+                            detailFocused,
+                            unfocusedContentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    ) { Text(stringResource(id = R.string.anime_detail)) }
+                    val (deleteFocused, deleteModifier) = rememberIsFocused()
+                    TextButton(
+                        onClick = { isDeleteMode = !isDeleteMode },
+                        modifier = deleteModifier,
+                        colors = focusedTextButtonColors(
+                            deleteFocused,
+                            unfocusedContentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    ) { Text(if (isDeleteMode) stringResource(R.string.cancel) else stringResource(R.string.delete)) }
+                }
+            )
         }) { paddingValues ->
+            if (isDeleteMode) {
+                BackHandler { isDeleteMode = false }
+            }
             LazyColumn(modifier = Modifier.padding(paddingValues)) {
                 resource.data?.let { downloadDetailList ->
 
@@ -112,16 +151,34 @@ fun DownloadDetailScreen(
 
                         PopupMenuListItem(
                             content = {
-                                DownloadEpisodeItem(
-                                    title = downloadDetail.title,
-                                    imgUrl = downloadDetail.imgUrl,
-                                    state = state
-                                )
+                                Box {
+                                    DownloadEpisodeItem(
+                                        title = downloadDetail.title,
+                                        imgUrl = downloadDetail.imgUrl,
+                                        state = state
+                                    )
+                                    DeleteOverlay(
+                                        visible = isDeleteMode,
+                                        modifier = Modifier
+                                            .padding(
+                                                horizontal = dimensionResource(id = R.dimen.small_padding),
+                                                vertical = dimensionResource(id = R.dimen.small_padding)
+                                            )
+                                            .height(dimensionResource(id = R.dimen.image_cover_height))
+                                            .aspectRatio(VIDEO_ASPECT_RATIO)
+                                    )
+                                }
                             },
                             menuText = stringResource(id = R.string.delete),
                             onClick = {
-                                when {
-                                    state.isSucceed.value -> {
+                                if (isDeleteMode) {
+                                    viewModel.deleteDownloadDetail(
+                                        downloadDetail.downloadUrl,
+                                        deleteFile = { state.remove() }
+                                    )
+                                } else {
+                                    when {
+                                        state.isSucceed.value -> {
                                         val title = titleState.value
                                         val episodeName = downloadDetail.title
                                         scope.launch {
@@ -150,6 +207,7 @@ fun DownloadDetailScreen(
 
                                     state.isStarted() -> state.stop()
                                     else -> state.start()
+                                }
                                 }
                             },
                             onMenuItemClick = {
